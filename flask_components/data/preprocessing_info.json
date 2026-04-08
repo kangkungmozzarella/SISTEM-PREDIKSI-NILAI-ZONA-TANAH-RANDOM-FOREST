@@ -1,0 +1,99 @@
+{
+  "feature_columns": [
+    "koordinat_latitude",
+    "koordinat_longitude",
+    "nomor_zona",
+    "luas_zona_m2",
+    "jarak_pusat_kota_km",
+    "elevasi_mdpl",
+    "kemiringan_lereng_persen",
+    "kepadatan_penduduk_km2",
+    "jarak_jalan_utama_m",
+    "jarak_sekolah_m",
+    "jarak_puskesmas_m",
+    "jarak_pasar_m",
+    "status_listrik",
+    "status_air_bersih",
+    "aksesibilitas_skor",
+    "tahun_data",
+    "nama_kelurahan_encoded",
+    "jenis_penggunaan_lahan_encoded",
+    "jarak_pusat_kategori_encoded",
+    "aksesibilitas_kategori_encoded"
+  ],
+  "target_column": "nilai_tanah_per_m2",
+  "categorical_features": [
+    "nama_kelurahan",
+    "jenis_penggunaan_lahan"
+  ],
+  "label_encoders_info": {
+    "nama_kelurahan": [
+      "Alue Dua Muka O",
+      "Alue Dua Muka S",
+      "Bantayan Timur",
+      "Blang Geulumpang",
+      "Buket Jok",
+      "Buket Juara",
+      "Buket Langa",
+      "Buket Meulinteung",
+      "Buket Pala",
+      "Dama Pulo",
+      "Gampong Aceh",
+      "Gampong Jalan",
+      "Gureb Blang",
+      "Kampung Blang",
+      "Kampung Jalan",
+      "Kampung Jawa",
+      "Kampung Tanjong",
+      "Ketapang Dua",
+      "Keude Aceh",
+      "Keude Blang",
+      "Keutapang Mameh",
+      "Lhok Asahan",
+      "Matang Bungong",
+      "Matang Rayeuk (PR)",
+      "Matang Rayeuk (SMK)",
+      "Meunasah Jeumpa",
+      "Meunasah Puuk",
+      "Seuneubok Bacee",
+      "Seuneubok Rambong",
+      "Seuneubok Teungoh (PR)",
+      "Seuneubok Teungoh (SMK)",
+      "Seuneubok Tutong",
+      "Tanjong Kapai",
+      "Tanoh Anou",
+      "Teupin Batee",
+      "Titi Baro",
+      "Tualang Dalam",
+      "Ulee Blang",
+      "Ulee Gle"
+    ],
+    "jenis_penggunaan_lahan": [
+      "Komersial",
+      "Pemukiman",
+      "Pertanian"
+    ],
+    "jarak_pusat_kategori": [
+      "Dekat",
+      "Jauh",
+      "Sangat Dekat",
+      "Sedang"
+    ],
+    "aksesibilitas_kategori": [
+      "Rendah",
+      "Sangat Tinggi",
+      "Sedang",
+      "Tinggi",
+      NaN
+    ]
+  },
+  "data_shape": [
+    452,
+    20
+  ],
+  "preprocessing_steps": [
+    "Label encoding untuk categorical variables",
+    "Feature engineering: jarak_pusat_kategori dan aksesibilitas_kategori",
+    "Feature selection untuk Random Forest"
+  ]
+}

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Title -->
+    <title>{% block title %}Prediksi Nilai Zona Tanah - Kecamatan Idi Rayeuk{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <!-- file upload -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/file-upload.css') }}">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+    <!-- Main css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+
+    <!-- Custom CSS untuk Land Value Prediction Theme -->
+    <style>
+        :root {
+            --primary-color: #2E8B57;
+            --secondary-color: #1B5E20;
+            --accent-color: #3498DB;
+            --land-light: #1ABC9C;
+            --land-dark: #154360;
+            --dark-color: #2c3e50;
+            --light-bg: #E8F5E8;
+            --map-green: #27AE60;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #ffffff 0%, #E8F5E8 100%);
+            border-right: 1px solid #A9DFBF;
+            box-shadow: 2px 0 10px rgba(46, 139, 87, 0.1);
+        }
+
+        .sidebar__logo h1 {
+            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .sidebar-menu__link {
+            color: #6c757d;
+            border-radius: 12px;
+            margin: 4px 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .sidebar-menu__link:hover {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #fff;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(46, 139, 87, 0.3);
+        }
+
+        .sidebar-menu__link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(46, 139, 87, 0.4);
+        }
+
+        .top-navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid #A9DFBF;
+            box-shadow: 0 2px 10px rgba(46, 139, 87, 0.1);
+        }
+
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(46, 139, 87, 0.1);
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+        .dashboard-body {
+            background: linear-gradient(135deg, #E8F5E8 0%, #D5F4E6 100%);
+            min-height: calc(100vh - 140px);
+        }
+
+        .widget-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .model-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 2px 4px;
+            display: inline-block;
+        }
+
+        .badge-rf {
+            background: rgba(46, 139, 87, 0.2);
+            color: var(--primary-color);
+            border: 1px solid rgba(46, 139, 87, 0.3);
+        }
+
+        .badge-gis {
+            background: rgba(52, 152, 219, 0.2);
+            color: var(--accent-color);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .badge-ml {
+            background: rgba(39, 174, 96, 0.2);
+            color: var(--map-green);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 12px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Preloader -->
+    <div class="preloader">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="side-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <button type="button"
+            class="sidebar-close-btn text-gray-500 hover-text-white hover-bg-main-600 text-md w-24 h-24 border border-gray-100 hover-border-main-600 d-xl-none d-flex flex-center rounded-circle position-absolute">
+            <i class="ph ph-x"></i>
+        </button>
+
+        <a href="{{ url_for('homepage') }}"
+            class="sidebar__logo text-center p-20 position-sticky inset-block-start-0 bg-white w-100 z-1 pb-10">
+            <h1 class="text-2xl fw-bold">
+                <i class="ph ph-map-trifold me-2"></i>
+                Land Prediction
+            </h1>
+        </a>
+
+        <div class="sidebar-menu-wrapper overflow-y-auto scroll-sm">
+            <div class="p-20 pt-10">
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu__item">
+                        <a href="{{ url_for('dashboard') }}"
+                            class="sidebar-menu__link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                            <span class="icon"><i class="ph ph-squares-four"></i></span>
+                            <span class="text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-menu__item">
+                        <a href="{{ url_for('dataset_index') }}"
+                            class="sidebar-menu__link {% if request.endpoint == 'dataset_index' %}active{% endif %}">
+                            <span class="icon"><i class="ph ph-database"></i></span>
+                            <span class="text">Dataset</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-menu__item">
+                        <a href="{{ url_for('analisis_results') }}"
+                            class="sidebar-menu__link {% if request.endpoint == 'analisis_results' %}active{% endif %}">
+                            <span class="icon"><i class="ph ph-chart-line-up"></i></span>
+                            <span class="text">Hasil Analisis</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-menu__item">
+                        <a href="{{ url_for('tentang') }}"
+                            class="sidebar-menu__link {% if request.endpoint == 'tentang' %}active{% endif %}">
+                            <span class="icon"><i class="ph ph-info"></i></span>
+                            <span class="text">Tentang</span>
+                        </a>
+                    </li>
+                    
+                    <!-- Spacer -->
+                    <li class="sidebar-menu__item mt-4">
+                        <div class="text-gray-400 text-12 fw-medium px-15 mb-2">AKSES</div>
+                    </li>
+
+                    <li class="sidebar-menu__item">
+                        <a href="{{ url_for('logout') }}" class="sidebar-menu__link">
+                            <span class="icon"><i class="ph ph-sign-out"></i></span>
+                            <span class="text">Logout</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <div class="dashboard-main-wrapper">
+        <!-- Header -->
+        <div class="top-navbar flex-between gap-16">
+            <div class="flex-align gap-16">
+                <button type="button" class="toggle-btn d-xl-none d-flex text-26 text-gray-500">
+                    <i class="ph ph-list"></i>
+                </button>
+                <div class="flex-align gap-8">
+                    <span class="model-badge badge-rf">Random Forest</span>
+                    <span class="model-badge badge-gis">GIS Integration</span>
+                    <span class="model-badge badge-ml">Machine Learning</span>
+                </div>
+            </div>
+
+            <div class="flex-align gap-16">
+                <div class="dropdown">
+                    <button
+                        class="dropdown-btn text-gray-500 w-40 h-40 bg-main-50 hover-bg-main-100 transition-2 rounded-circle text-xl flex-center"
+                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="position-relative">
+                            <i class="ph ph-bell"></i>
+                            <span class="alarm-notify position-absolute end-0"></span>
+                        </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu--md border-0 bg-transparent p-0">
+                        <div class="card border border-gray-100 rounded-12">
+                            <div class="card-body p-15 text-center">
+                                <h6 class="mb-2">Model Status</h6>
+                                <p class="text-sm text-gray-500 mb-2">Random Forest Model siap untuk prediksi</p>
+                                <span class="badge bg-success">Model Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <button
+                        class="users arrow-down-icon border border-gray-200 rounded-pill p-4 d-inline-block pe-40 position-relative"
+                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="position-relative">
+                            <img src="{{ url_for('static', filename='images/thumbs/user-img.png') }}" alt="User"
+                                class="h-32 w-32 rounded-circle">
+                            <span
+                                class="activation-badge w-8 h-8 position-absolute inset-block-end-0 inset-inline-end-0"></span>
+                        </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu--lg border-0 bg-transparent p-0">
+                        <div class="card border border-gray-100 rounded-12">
+                            <div class="card-body">
+                                <div class="flex-align gap-8 mb-20 pb-20 border-bottom border-gray-100">
+                                    <img src="{{ url_for('static', filename='images/thumbs/user-img.png') }}" alt=""
+                                        class="w-54 h-54 rounded-circle">
+                                    <div>
+                                        <h4 class="mb-0">{{ session.get('username', 'User') }}</h4>
+                                        <p class="fw-medium text-13 text-gray-200">Research Admin</p>
+                                    </div>
+                                </div>
+                                <div class="text-center mb-3">
+                                    <small class="text-gray-500 d-block">Role: Administrator</small>
+                                    <small class="text-gray-500 d-block">System: Land Value Prediction</small>
+                                    <small class="text-gray-500 d-block">Location: Idi Rayeuk, Aceh Timur</small>
+                                </div>
+                                <div class="pt-8 border-top border-gray-100">
+                                    <a href="{{ url_for('logout') }}"
+                                        class="py-12 text-15 px-20 hover-bg-danger-50 text-gray-300 hover-text-danger-600 rounded-8 flex-align gap-8 fw-medium text-15 w-100">
+                                        <span class="text-2xl text-danger-600 d-flex"><i
+                                                class="ph ph-sign-out"></i></span>
+                                        <span class="text">Log Out</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="dashboard-body">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show m-3"
+                role="alert">
+                <div class="d-flex align-items-center">
+                    {% if category == 'success' %}
+                    <i class="ph ph-check-circle me-2"></i>
+                    {% elif category == 'danger' or category == 'error' %}
+                    <i class="ph ph-x-circle me-2"></i>
+                    {% elif category == 'warning' %}
+                    <i class="ph ph-warning-circle me-2"></i>
+                    {% else %}
+                    <i class="ph ph-info me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}
+            <!-- Content akan diisi di sini -->
+            {% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <div class="dashboard-footer">
+            <div class="flex-between flex-wrap gap-16 p-20">
+                <p class="text-gray-300 text-13 fw-normal">© 2025 Prediksi Nilai Zona Tanah - Kecamatan Idi Rayeuk, Aceh
+                    Timur</p>
+                <div class="flex-align gap-16">
+                    <span class="text-gray-400 text-12">Random Forest Regression</span>
+                    <span class="text-gray-400 text-12">•</span>
+                    <span class="text-gray-400 text-12">Geographic Information System</span>
+                    <span class="text-gray-400 text-12">•</span>
+                    <span class="text-gray-400 text-12">Machine Learning</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/boostrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/phosphor-icon.js') }}"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add fade-in animation
+            const content = document.querySelector('.dashboard-body');
+            if (content) content.classList.add('fade-in');
+
+            // Model badge hover effects
+            const badges = document.querySelectorAll('.model-badge');
+            badges.forEach(badge => {
+                badge.addEventListener('mouseenter', function () {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.transition = 'all 0.2s ease';
+                });
+                badge.addEventListener('mouseleave', function () {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+
+            // Auto-hide flash messages
+            setTimeout(function () {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function (alert) {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                });
+            }, 5000);
+
+            console.log('🗺️ Land Value Prediction System loaded');
+            console.log('📍 Location: Idi Rayeuk, Aceh Timur');
+        });
+
+        // Utility functions untuk penelitian
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function getValueColor(value) {
+            if (value > 300000) return '#E74C3C'; // High value - Red
+            if (value > 150000) return '#F39C12'; // Medium value - Orange
+            return '#3498DB'; // Low value - Blue
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

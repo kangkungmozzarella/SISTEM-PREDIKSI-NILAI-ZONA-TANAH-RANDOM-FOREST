@@ -1,0 +1,85 @@
+{
+  "testing_statistics": {
+    "mae": 9774.172829002504,
+    "rmse": 13760.771690025862,
+    "mape": 4.954806586368226,
+    "min_error": -55056.62301587302,
+    "max_error": 26209.904761904763,
+    "mean_error": -1990.2394443163614,
+    "std_error": 13691.521458266998
+  },
+  "best_predictions": [
+    {
+      "id_zona": "Z235",
+      "nama_kelurahan": "Keude Blang",
+      "actual": 185000.0,
+      "predicted": 185023.23834498835,
+      "error_percentage": 0.012561267561269799
+    },
+    {
+      "id_zona": "Z109",
+      "nama_kelurahan": "Tualang Dalam",
+      "actual": 105000.0,
+      "predicted": 105159.86507936506,
+      "error_percentage": 0.15225245653815192
+    },
+    {
+      "id_zona": "Z386",
+      "nama_kelurahan": "Gampong Aceh",
+      "actual": 115000.0,
+      "predicted": 115223.98015873015,
+      "error_percentage": 0.19476535541752008
+    },
+    {
+      "id_zona": "Z015",
+      "nama_kelurahan": "Alue Dua Muka O",
+      "actual": 275000.0,
+      "predicted": 274678.23412698414,
+      "error_percentage": -0.11700577200576662
+    },
+    {
+      "id_zona": "Z212",
+      "nama_kelurahan": "Seuneubok Tutong",
+      "actual": 440000.0,
+      "predicted": 440390.156926407,
+      "error_percentage": 0.0886720287288666
+    }
+  ],
+  "worst_predictions": [
+    {
+      "id_zona": "Z350",
+      "nama_kelurahan": "Keude Blang",
+      "actual": 205000.0,
+      "predicted": 149943.37698412698,
+      "error_percentage": -26.856889276035616
+    },
+    {
+      "id_zona": "Z002",
+      "nama_kelurahan": "Keude Blang",
+      "actual": 520000.0,
+      "predicted": 471195.20202020206,
+      "error_percentage": -9.385538073038065
+    },
+    {
+      "id_zona": "Z367",
+      "nama_kelurahan": "Bantayan Timur",
+      "actual": 168000.0,
+      "predicted": 135205.82539682538,
+      "error_percentage": -19.520342025699176
+    },
+    {
+      "id_zona": "Z220",
+      "nama_kelurahan": "Teupin Batee",
+      "actual": 168000.0,
+      "predicted": 135555.90476190473,
+      "error_percentage": -19.311961451247182
+    },
+    {
+      "id_zona": "Z193",
+      "nama_kelurahan": "Matang Rayeuk (SMK)",
+      "actual": 138000.0,
+      "predicted": 164209.90476190476,
+      "error_percentage": 18.992684610075916
+    }
+  ]
+}

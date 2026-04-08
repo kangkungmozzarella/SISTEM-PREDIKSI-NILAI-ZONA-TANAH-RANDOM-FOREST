@@ -1,0 +1,29 @@
+{
+  "model_paths": {
+    "complete_pipeline": "flask_components/models/complete_pipeline.pkl",
+    "random_forest_model": "flask_components/models/random_forest_model.pkl",
+    "label_encoders": "flask_components/models/label_encoders.pkl",
+    "prediction_functions": "flask_components/models/prediction_functions.pkl"
+  },
+  "data_paths": {
+    "sorted_dataset": "flask_components/data/sorted_dataset.csv",
+    "processed_dataset": "flask_components/data/processed_dataset.csv",
+    "detailed_predictions": "flask_components/results/detailed_predictions_vs_actual.csv"
+  },
+  "results_paths": {
+    "final_performance": "flask_components/results/final_performance_summary.json",
+    "error_analysis": "flask_components/results/error_analysis.json",
+    "feature_importance": "flask_components/results/feature_importance_analysis.json"
+  },
+  "visualization_paths": {
+    "prediksi_vs_aktual": "flask_components/visualizations/prediksi_vs_aktual_scatter.html",
+    "peta_sebaran": "flask_components/visualizations/peta_sebaran_nilai_tanah.html",
+    "feature_importance": "flask_components/visualizations/feature_importance_bar.html",
+    "error_analysis": "flask_components/visualizations/error_per_tahun.html"
+  },
+  "app_settings": {
+    "title": "Prediksi Nilai Zona Tanah Idi Rayeuk",
+    "description": "Sistem prediksi nilai zona tanah menggunakan Random Forest Regression",
+    "version": "1.0.0"
+  }
+}

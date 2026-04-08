@@ -1,0 +1,57 @@
+{
+  "yearly_error": [
+    {
+      "tahun_data": 2023,
+      "mean_abs_error": 9603.15,
+      "std_abs_error": 10037.9,
+      "min_abs_error": 223.98,
+      "max_abs_error": 55056.62,
+      "mean_abs_pct_error": 5.54
+    },
+    {
+      "tahun_data": 2024,
+      "mean_abs_error": 12278.03,
+      "std_abs_error": 10063.79,
+      "min_abs_error": 605.65,
+      "max_abs_error": 48804.8,
+      "mean_abs_pct_error": 5.19
+    },
+    {
+      "tahun_data": 2025,
+      "mean_abs_error": 8129.39,
+      "std_abs_error": 9087.75,
+      "min_abs_error": 23.24,
+      "max_abs_error": 32794.17,
+      "mean_abs_pct_error": 4.18
+    }
+  ],
+  "lahan_error": [
+    {
+      "jenis_penggunaan_lahan": "Komersial",
+      "mean_abs_error": 16737.34,
+      "std_abs_error": 18805.43,
+      "count": 5,
+      "mean_abs_pct_error": 3.36
+    },
+    {
+      "jenis_penggunaan_lahan": "Pemukiman",
+      "mean_abs_error": 8605.07,
+      "std_abs_error": 9294.58,
+      "count": 46,
+      "mean_abs_pct_error": 3.18
+    },
+    {
+      "jenis_penggunaan_lahan": "Pertanian",
+      "mean_abs_error": 10248.25,
+      "std_abs_error": 8655.27,
+      "count": 40,
+      "mean_abs_pct_error": 7.2
+    }
+  ],
+  "overall_insights": {
+    "best_year": 2025,
+    "worst_year": 2023,
+    "best_lahan_type": "Pemukiman",
+    "worst_lahan_type": "Pertanian"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "research_info": {
+    "title": "PREDIKSI NILAI ZONA TANAH DI KECAMATAN IDI RAYEUK ACEH TIMUR MENGGUNAKAN METODE RANDOM FOREST REGRESSION BERBASIS SISTEM INFORMASI GEOGRAFIS",
+    "researcher": "Haris",
+    "location": "Kecamatan Idi Rayeuk, Aceh Timur",
+    "period": "2023-2025",
+    "completion_date": "2026-01-02T22:34:42.872750"
+  },
+  "dataset_summary": {
+    "total_zones": 452,
+    "kelurahan_count": 39,
+    "years_covered": [
+      2023,
+      2024,
+      2025
+    ],
+    "target_variable": "nilai_tanah_per_m2",
+    "features_used": 20,
+    "price_range": {
+      "min": 68000,
+      "max": 520000,
+      "mean": 231115.04424778762
+    }
+  },
+  "methodology": {
+    "algorithm": "Random Forest Regression",
+    "data_split": "80% Training, 20% Testing",
+    "evaluation_metrics": [
+      "R² Score",
+      "MAE",
+      "RMSE",
+      "MAPE"
+    ],
+    "cross_validation": "Stratified by year",
+    "feature_engineering": [
+      "Label encoding untuk categorical variables",
+      "Kategorisasi jarak pusat kota",
+      "Kategorisasi skor aksesibilitas"
+    ]
+  },
+  "results": {
+    "model_performance": {
+      "r2_score": 0.9863734805070827,
+      "mae": 9774.172829002504,
+      "rmse": 13760.771690025862,
+      "mape": 4.954806586368226
+    },
+    "top_features": {
+      "status_air_bersih": 0.058128653854786425,
+      "kepadatan_penduduk_km2": 0.13445786858574535,
+      "luas_zona_m2": 0.14115956385607456,
+      "jarak_puskesmas_m": 0.2800658201318351,
+      "jarak_pasar_m": 0.3322062066882473
+    },
+    "best_performing_year": 2025,
+    "best_land_type": "Pemukiman"
+  },
+  "conclusions": {
+    "model_accuracy": "Model dapat memprediksi nilai tanah dengan akurasi 98.6%",
+    "error_rate": "Error rata-rata 5.0% dari nilai aktual",
+    "practical_application": "Model siap digunakan untuk estimasi nilai tanah di Kecamatan Idi Rayeuk",
+    "recommendations": [
+      "Model menunjukkan performa yang baik untuk prediksi nilai zona tanah",
+      "Faktor paling berpengaruh: jarak_pasar_m",
+      "Sistem dapat diintegrasikan dengan WebGIS untuk aplikasi real-time",
+      "Perlu update data berkala untuk maintenance akurasi model"
+    ]
+  },
+  "technical_deliverables": {
+    "flask_application": "Complete web application dengan prediction API",
+    "interactive_maps": "Leaflet JS integration untuk visualisasi geografis",
+    "ml_pipeline": "End-to-end machine learning pipeline untuk production",
+    "analytics_dashboard": "Interactive dashboard dengan Plotly visualizations"
+  }
+}

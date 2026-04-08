@@ -1,0 +1,52 @@
+{
+  "model_params": {
+    "n_estimators": 100,
+    "max_depth": 15,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42
+  },
+  "training_metrics": {
+    "r2_score": 0.9947344814314132,
+    "mae": 5165.674962310689,
+    "mse": 66981866.35389038,
+    "rmse": 8184.245008178236,
+    "mape": 3.021043401853345
+  },
+  "testing_metrics": {
+    "r2_score": 0.9863734805070827,
+    "mae": 9774.172829002508,
+    "mse": 189358837.50501722,
+    "rmse": 13760.771690025862,
+    "mape": 4.954806586368228
+  },
+  "timing": {
+    "training_time": 0.26965761184692383,
+    "prediction_time": 0.028804302215576172
+  },
+  "model_info": {
+    "n_features": 20,
+    "feature_names": [
+      "koordinat_latitude",
+      "koordinat_longitude",
+      "nomor_zona",
+      "luas_zona_m2",
+      "jarak_pusat_kota_km",
+      "elevasi_mdpl",
+      "kemiringan_lereng_persen",
+      "kepadatan_penduduk_km2",
+      "jarak_jalan_utama_m",
+      "jarak_sekolah_m",
+      "jarak_puskesmas_m",
+      "jarak_pasar_m",
+      "status_listrik",
+      "status_air_bersih",
+      "aksesibilitas_skor",
+      "tahun_data",
+      "nama_kelurahan_encoded",
+      "jenis_penggunaan_lahan_encoded",
+      "jarak_pusat_kategori_encoded",
+      "aksesibilitas_kategori_encoded"
+    ]
+  }
+}

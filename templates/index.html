@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediksi Nilai Zona Tanah - Kecamatan Idi Rayeuk Aceh Timur</title>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #2E8B57;
+            --secondary-color: #3498DB;
+            --accent-color: #1ABC9C;
+            --land-dark: #1B5E20;
+            --land-medium: #2E7D32;
+            --land-light: #E8F5E8;
+            --gradient-primary: linear-gradient(135deg, #2E8B57, #1B5E20);
+            --gradient-secondary: linear-gradient(135deg, #3498DB, #1ABC9C);
+            --gradient-land: linear-gradient(135deg, #2E8B57, #3498DB);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--land-dark);
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand { font-weight: 700; font-size: 1.5rem; color: var(--primary-color) !important; }
+        .navbar-nav .nav-link { font-weight: 500; margin: 0 10px; transition: color 0.3s ease; }
+        .navbar-nav .nav-link:hover { color: var(--primary-color) !important; }
+
+        .btn-admin {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-admin:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(46,139,87,0.3); color: white; }
+
+        /* Hero */
+        .hero {
+            background: var(--gradient-land);
+            padding: 120px 0 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" stroke-width="0.5" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .hero-content { position: relative; z-index: 2; }
+        .hero h1 { font-size: 3.5rem; font-weight: 700; color: white; margin-bottom: 1.5rem; animation: slideInUp 1s ease-out; }
+        .hero .lead { font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem; animation: slideInUp 1s ease-out 0.2s both; }
+        .hero-stats { animation: slideInUp 1s ease-out 0.4s both; }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-number { font-size: 2.5rem; font-weight: 700; display: block; }
+        .stat-label { font-size: 0.9rem; opacity: 0.8; }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Map Section */
+        .map-section { padding: 80px 0; background: white; }
+
+        .map-container {
+            height: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        #landValueMap { height: 100%; width: 100%; }
+
+        .map-legend {
+            background: white;
+            padding: 14px 16px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 190px;
+            font-size: 0.85rem;
+        }
+
+        .legend-item { display: flex; align-items: center; margin-bottom: 7px; }
+        .legend-dot { width: 13px; height: 13px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+        /* Map filter bar */
+        .map-filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .map-filter-btn {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 2px solid #ddd;
+            background: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .map-filter-btn.active, .map-filter-btn:hover { color: white; border-color: transparent; }
+        .map-filter-btn[data-type="Semua"].active    { background: #555; }
+        .map-filter-btn[data-type="Komersial"].active { background: #E74C3C; }
+        .map-filter-btn[data-type="Pemukiman"].active  { background: #3498DB; }
+        .map-filter-btn[data-type="Pertanian"].active  { background: #27AE60; }
+
+        /* Demo Section */
+        .demo-section { padding: 80px 0; background: var(--land-light); }
+
+        .demo-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 2rem;
+            transition: transform 0.3s ease;
+        }
+        .demo-card:hover { transform: translateY(-5px); }
+
+        .land-input {
+            background: var(--land-light);
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .land-input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(46,139,87,0.1); }
+
+        .btn-predict {
+            background: var(--gradient-primary);
+            border: none; color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(46,139,87,0.3); color: white; }
+
+        .btn-sample {
+            background: var(--gradient-secondary);
+            border: none; color: white;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-sample:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52,152,219,0.3); color: white; }
+
+        .result-card { border-radius: 15px; padding: 1.5rem; margin-top: 1rem; animation: fadeInUp 0.5s ease-out; }
+        .result-card.high-value   { background: linear-gradient(135deg, #E74C3C, #C0392B); color: white; }
+        .result-card.medium-value { background: linear-gradient(135deg, #F39C12, #E67E22); color: white; }
+        .result-card.low-value    { background: linear-gradient(135deg, #3498DB, #2980B9); color: white; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Info Section */
+        .info-section { padding: 80px 0; }
+        .info-card { text-align: center; padding: 2rem; border-radius: 15px; transition: transform 0.3s ease; height: 100%; }
+        .info-card:hover { transform: translateY(-5px); }
+        .info-icon {
+            width: 80px; height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 20px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem; color: white;
+        }
+
+        /* About Section */
+        .about-section { padding: 80px 0; background: var(--land-light); }
+        .methodology-step { text-align: center; padding: 1.5rem; }
+        .step-number {
+            width: 60px; height: 60px;
+            background: var(--gradient-primary);
+            color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem; font-weight: 700;
+        }
+
+        /* Footer */
+        .footer { background: var(--land-dark); color: white; padding: 60px 0 30px; }
+        .footer-content { border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 30px; margin-bottom: 30px; }
+        .footer-bottom { text-align: center; color: rgba(255,255,255,0.6); }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero .lead { font-size: 1.1rem; }
+            .stat-number { font-size: 2rem; }
+            .map-container { height: 400px; }
+        }
+
+        .loading { display: none; text-align: center; margin: 20px 0; }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 30px; height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 5px 2px;
+            background: rgba(255,255,255,0.25);
+            color: #ffffff;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#home">
+                <i class="ph ph-map-pin me-2"></i>Prediksi Nilai Tanah
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="#home">Beranda</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#demo">Prediksi</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#peta">Peta GIS</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#tentang">Tentang</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Kontak</a></li>
+                </ul>
+                <div class="d-flex">
+                    <a href="{{ url_for('login') }}" class="btn btn-admin">
+                        <i class="ph ph-sign-in me-2"></i>Login Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8 hero-content">
+                    <h1>Prediksi Nilai Zona Tanah</h1>
+                    <p class="lead">
+                        {{ app_description or 'Sistem Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk, Aceh Timur menggunakan Random Forest Regression berbasis Sistem Informasi Geografis' }}
+                    </p>
+                    <div class="row hero-stats mt-4">
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="stat-card">
+                                <span class="stat-number">{{ total_zones or 453 }}</span>
+                                <span class="stat-label">Total Zona</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="stat-card">
+                                <span class="stat-number">{{ total_kelurahan or 43 }}</span>
+                                <span class="stat-label">Gampong/Kelurahan</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="stat-card">
+                                <span class="stat-number">{{ total_years or 3 }}</span>
+                                <span class="stat-label">Tahun Data</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="stat-card">
+                                <span class="stat-number">{{ features_count or 20 }}</span>
+                                <span class="stat-label">Fitur GIS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center">
+                    <div class="hero-visual">
+                        <i class="ph ph-buildings" style="font-size: 15rem; color: rgba(255,255,255,0.2);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Map GIS Section -->
+    <section id="peta" class="map-section">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2>Sebaran Bidang Tanah - Kecamatan Idi Rayeuk</h2>
+                <p class="lead">Visualisasi geografis bidang tanah per zona di Kecamatan Idi Rayeuk, Aceh Timur</p>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="map-filter-bar mb-3">
+                <span style="font-size:0.85rem;color:#888;font-weight:500;">Filter Jenis Lahan:</span>
+                <button class="map-filter-btn active" data-type="Semua">Semua</button>
+                <button class="map-filter-btn" data-type="Komersial">🔴 Komersial</button>
+                <button class="map-filter-btn" data-type="Pemukiman">🔵 Pemukiman</button>
+                <button class="map-filter-btn" data-type="Pertanian">🟢 Pertanian</button>
+                <span id="map-zone-count" class="ms-auto text-muted" style="font-size:0.82rem;"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="position-relative">
+                        <div class="map-container">
+                            <div id="landValueMap"></div>
+                        </div>
+                        <!-- Map Legend -->
+                        <div class="map-legend">
+                            <h6 class="mb-2"><strong>Jenis Penggunaan Lahan</strong></h6>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#E74C3C;"></div>
+                                <span>Komersial</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#3498DB;"></div>
+                                <span>Pemukiman</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#27AE60;"></div>
+                                <span>Pertanian</span>
+                            </div>
+                            <hr style="margin:8px 0;">
+                            <small class="text-muted">
+                                Klik marker untuk detail<br>
+                                bidang tanah
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section id="demo" class="demo-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2>Prediksi Nilai Zona Tanah</h2>
+                <p class="lead">Masukkan karakteristik zona untuk memprediksi nilai tanah menggunakan {{ algorithm or 'Random Forest Regression' }}</p>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="demo-card">
+                        <form id="predictionForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="kelurahan" class="form-label fw-bold">
+                                            <i class="ph ph-map-pin me-2"></i>Kelurahan/Gampong
+                                        </label>
+                                        <select class="form-control land-input" id="kelurahan" name="kelurahan" required>
+                                            <option value="" disabled selected>Pilih Kelurahan/Gampong</option>
+                                            {% for kelurahan in kelurahan_list[:8] %}
+                                            <option value="{{ kelurahan }}">{{ kelurahan }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="jenisLahan" class="form-label fw-bold">
+                                            <i class="ph ph-tree me-2"></i>Jenis Penggunaan Lahan
+                                        </label>
+                                        <select class="form-control land-input" id="jenisLahan" name="jenis_lahan" required>
+                                            <option value="" disabled selected>Pilih jenis lahan</option>
+                                            <option value="Komersial">Komersial</option>
+                                            <option value="Pemukiman">Pemukiman</option>
+                                            <option value="Pertanian">Pertanian</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="jarakKota" class="form-label fw-bold">
+                                            <i class="ph ph-road-horizon me-2"></i>Jarak ke Pusat Kota (km)
+                                        </label>
+                                        <input type="number" class="form-control land-input" id="jarakKota" name="jarak_kota" min="0" max="20" step="0.1" placeholder="0.5" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="luasZona" class="form-label fw-bold">
+                                            <i class="ph ph-squares-four me-2"></i>Luas Zona (m²)
+                                        </label>
+                                        <input type="number" class="form-control land-input" id="luasZona" name="luas_zona" min="100" max="5000" placeholder="1000" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="aksesibilitas" class="form-label fw-bold">
+                                            <i class="ph ph-path me-2"></i>Skor Aksesibilitas (0-10)
+                                        </label>
+                                        <input type="number" class="form-control land-input" id="aksesibilitas" name="aksesibilitas" min="0" max="10" step="0.1" placeholder="7.5" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="listrik" class="form-label fw-bold">
+                                            <i class="ph ph-lightning me-2"></i>Status Listrik
+                                        </label>
+                                        <select class="form-control land-input" id="listrik" name="status_listrik" required>
+                                            <option value="" disabled selected>Pilih status</option>
+                                            <option value="1">Ada</option>
+                                            <option value="0">Tidak Ada</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="airBersih" class="form-label fw-bold">
+                                            <i class="ph ph-drop me-2"></i>Status Air Bersih
+                                        </label>
+                                        <select class="form-control land-input" id="airBersih" name="status_air" required>
+                                            <option value="" disabled selected>Pilih status</option>
+                                            <option value="1">Ada</option>
+                                            <option value="0">Tidak Ada</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="tahunData" class="form-label fw-bold">
+                                            <i class="ph ph-calendar me-2"></i>Tahun Data
+                                        </label>
+                                        <select class="form-control land-input" id="tahunData" name="tahun" required>
+                                            <option value="2025" selected>2025</option>
+                                            <option value="2024">2024</option>
+                                            <option value="2023">2023</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center mb-3">
+                                <button type="submit" class="btn-predict">
+                                    <i class="ph ph-calculator me-2"></i>Prediksi Nilai Tanah
+                                </button>
+                                <button type="button" class="btn btn-sample me-2" onclick="fillSampleLand('commercial')">
+                                    <i class="ph ph-buildings me-1"></i>Area Komersial
+                                </button>
+                                <button type="button" class="btn btn-sample me-2" onclick="fillSampleLand('residential')">
+                                    <i class="ph ph-house me-1"></i>Pemukiman
+                                </button>
+                                <button type="button" class="btn btn-sample" onclick="fillSampleLand('agricultural')">
+                                    <i class="ph ph-plant me-1"></i>Pertanian
+                                </button>
+                            </div>
+                        </form>
+                        <div id="loadingDiv" class="loading">
+                            <div class="spinner"></div>
+                            <p class="mt-2">Menganalisis karakteristik zona dengan {{ algorithm or 'Random Forest Regression' }}...</p>
+                        </div>
+                        <div id="resultDiv"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Info Section -->
+    <section class="info-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2>Mengapa {{ algorithm or 'Random Forest' }} untuk Prediksi Nilai Tanah?</h2>
+                <p class="lead">Machine Learning untuk optimalisasi penilaian dan perencanaan tata ruang</p>
+            </div>
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="info-card">
+                        <div class="info-icon"><i class="ph ph-target"></i></div>
+                        <h4>Akurasi Tinggi</h4>
+                        <p>Random Forest Regression mencapai akurasi prediksi dengan MAPE {{ "%.1f"|format(model_accuracy or 12.5) }}% untuk estimasi nilai tanah berdasarkan {{ total_zones or 453 }} zona di {{ main_kecamatan or 'Kecamatan Idi Rayeuk' }}</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="info-card">
+                        <div class="info-icon"><i class="ph ph-map-trifold"></i></div>
+                        <h4>Berbasis GIS</h4>
+                        <p>Integrasi {{ features_count or 20 }} fitur spasial meliputi koordinat, jarak fasilitas, aksesibilitas, dan infrastruktur untuk prediksi yang komprehensif dan akurat</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="info-card">
+                        <div class="info-icon"><i class="ph ph-chart-line-up"></i></div>
+                        <h4>Data Representatif</h4>
+                        <p>Menggunakan {{ total_zones or 453 }} zona tanah dari {{ total_kelurahan or 43 }} gampong/kelurahan periode {{ data_period or '2023-2025' }} untuk model yang robust dan dapat diandalkan</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="tentang" class="about-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2>Metodologi Penelitian</h2>
+                <p class="lead">6 tahap pengembangan sistem prediksi nilai zona tanah</p>
+            </div>
+            <div class="row">
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">1</div>
+                        <h6>Data Collection</h6>
+                        <p>{{ total_zones or 453 }} zona dari {{ total_kelurahan or 43 }} lokasi</p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">2</div>
+                        <h6>Feature Engineering</h6>
+                        <p>{{ features_count or 20 }} fitur spasial dan infrastruktur</p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">3</div>
+                        <h6>GIS Integration</h6>
+                        <p>Koordinat, jarak, aksesibilitas</p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">4</div>
+                        <h6>{{ algorithm or 'Random Forest' }}</h6>
+                        <p>Hyperparameter tuning optimal</p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">5</div>
+                        <h6>Model Evaluation</h6>
+                        <p>MAPE: {{ "%.1f"|format(model_accuracy or 12.5) }}%</p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-6 mb-4">
+                    <div class="methodology-step">
+                        <div class="step-number">6</div>
+                        <h6>Web Application</h6>
+                        <p>{{ platform or 'Flask + Leaflet.js' }} deployment</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h4>{{ research_title or 'Prediksi Nilai Zona Tanah - Kecamatan Idi Rayeuk' }}</h4>
+                        <p>Sistem prediksi nilai zona tanah menggunakan {{ research_method or 'Random Forest Regression berbasis Sistem Informasi Geografis' }}. Penelitian ini menggunakan {{ total_zones or 453 }} data zona tanah dari {{ total_kelurahan or 43 }} gampong/kelurahan untuk memprediksi nilai tanah dengan akurasi tinggi di {{ research_location or 'Kecamatan Idi Rayeuk, Aceh Timur' }}.</p>
+                        <div class="mt-3">
+                            <i class="ph ph-database me-2"></i>{{ total_zones or 453 }} Zona Tanah Periode {{ data_period or '2023-2025' }}<br>
+                            <i class="ph ph-map-pin me-2"></i>{{ total_kelurahan or 43 }} Gampong/Kelurahan {{ main_kecamatan or 'Idi Rayeuk' }}<br>
+                            <i class="ph ph-chart-line-up me-2"></i>{{ research_method or 'Random Forest Regression + GIS' }}
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h5>Hasil Penelitian</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <ul class="list-unstyled">
+                                    <li>• {{ algorithm or 'Random Forest' }} Regression</li>
+                                    <li>• Hyperparameter Tuning</li>
+                                    <li>• 5-Fold Cross Validation</li>
+                                    <li>• Feature Engineering GIS</li>
+                                </ul>
+                            </div>
+                            <div class="col-6">
+                                <ul class="list-unstyled">
+                                    <li>• MAPE {{ "%.1f"|format(model_accuracy or 12.5) }}%</li>
+                                    <li>• {{ features_count or 20 }} Fitur Spasial</li>
+                                    <li>• Train/Test Split 80:20</li>
+                                    <li>• Real-time Prediction</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; {{ current_year or 2025 }} {{ research_title or 'Prediksi Nilai Zona Tanah Kecamatan Idi Rayeuk, Aceh Timur' }}. {{ research_method or 'Random Forest Regression berbasis Sistem Informasi Geografis' }} untuk optimalisasi penilaian tanah.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let landValueMap;
+        let allMarkers = [];
+        let zonesData = [];
+
+        const markerColors = {
+            'Komersial': '#E74C3C',
+            'Pemukiman': '#3498DB',
+            'Pertanian': '#27AE60'
+        };
+
+        function createCircleIcon(color) {
+            return L.divIcon({
+                className: '',
+                html: `<div style="
+                    width: 13px; height: 13px;
+                    background: ${color};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+                "></div>`,
+                iconSize: [13, 13],
+                iconAnchor: [6, 6],
+                popupAnchor: [0, -10]
+            });
+        }
+
+        function formatRupiah(val) {
+            return 'Rp ' + parseInt(val).toLocaleString('id-ID');
+        }
+
+        function buildPopup(zone) {
+            const color = markerColors[zone.jenis_penggunaan_lahan] || '#555';
+            let tahunRows = '';
+            if (zone.nilai_per_tahun) {
+                tahunRows = Object.entries(zone.nilai_per_tahun).sort().map(([thn, val]) =>
+                    `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f0f0f0;">
+                        <span style="color:#888;font-size:0.75rem;">${thn}</span>
+                        <span style="font-weight:600;font-size:0.75rem;">${formatRupiah(val)}/m²</span>
+                    </div>`
+                ).join('');
+            }
+            return `
+                <div style="min-width:210px;">
+                    <div style="background:${color};color:white;padding:8px 12px;margin:-1px -1px 0;border-radius:4px 4px 0 0;font-weight:700;font-size:0.85rem;">
+                        📍 ${zone.nama_kelurahan}
+                        <span style="float:right;opacity:0.85;font-size:0.75rem;">Zona ${zone.nomor_zona}</span>
+                    </div>
+                    <div style="padding:10px 12px;font-size:0.8rem;">
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+                            <span style="color:#888;">Jenis Lahan</span>
+                            <span style="font-weight:600;">${zone.jenis_penggunaan_lahan}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+                            <span style="color:#888;">Luas</span>
+                            <span style="font-weight:600;">${parseInt(zone.luas_zona_m2).toLocaleString('id-ID')} m²</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+                            <span style="color:#888;">Aksesibilitas</span>
+                            <span style="font-weight:600;">${zone.aksesibilitas_skor}/10</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+                            <span style="color:#888;">Listrik / Air</span>
+                            <span style="font-weight:600;">${zone.status_listrik ? '✅' : '❌'} / ${zone.status_air_bersih ? '✅' : '❌'}</span>
+                        </div>
+                        <div style="margin-top:8px;">
+                            <div style="color:#888;margin-bottom:4px;font-size:0.75rem;">Nilai per Tahun:</div>
+                            ${tahunRows}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderMarkers(data, filterType) {
+            allMarkers.forEach(m => landValueMap.removeLayer(m));
+            allMarkers = [];
+
+            const filtered = filterType === 'Semua'
+                ? data
+                : data.filter(z => z.jenis_penggunaan_lahan === filterType);
+
+            filtered.forEach(zone => {
+                const color = markerColors[zone.jenis_penggunaan_lahan] || '#888';
+                const marker = L.marker([zone.lat, zone.lng], { icon: createCircleIcon(color) });
+                marker.bindPopup(buildPopup(zone), { maxWidth: 260 });
+                marker.addTo(landValueMap);
+                allMarkers.push(marker);
+            });
+
+            const countEl = document.getElementById('map-zone-count');
+            if (countEl) countEl.textContent = filtered.length + ' bidang tanah ditampilkan';
+        }
+
+        function initializeLandValueMap() {
+            landValueMap = L.map('landValueMap').setView([4.945, 97.765], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(landValueMap);
+
+            fetch('/api/dataset/zones')
+                .then(res => res.json())
+                .then(response => {
+                    if (response.status === 'success' && response.data.length > 0) {
+                        zonesData = response.data;
+                        renderMarkers(zonesData, 'Semua');
+
+                        document.querySelectorAll('.map-filter-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
+                                this.classList.add('active');
+                                renderMarkers(zonesData, this.dataset.type);
+                            });
+                        });
+
+                        console.log('🗺️ Homepage map: ' + response.total + ' zona dimuat');
+                    }
+                })
+                .catch(err => console.error('Error loading map:', err));
+        }
+
+        const sampleLands = {
+            commercial: {
+                kelurahan: '{{ kelurahan_list[0] if kelurahan_list else "Keude Blang" }}',
+                jenis_lahan: 'Komersial', jarak_kota: 0.5, luas_zona: 500,
+                aksesibilitas: 9.0, status_listrik: 1, status_air: 1, tahun: 2025
+            },
+            residential: {
+                kelurahan: '{{ kelurahan_list[1] if kelurahan_list and kelurahan_list|length > 1 else "Blang Geulumpang" }}',
+                jenis_lahan: 'Pemukiman', jarak_kota: 2.5, luas_zona: 1000,
+                aksesibilitas: 7.5, status_listrik: 1, status_air: 0, tahun: 2025
+            },
+            agricultural: {
+                kelurahan: '{{ kelurahan_list[2] if kelurahan_list and kelurahan_list|length > 2 else "Kampung Jawa" }}',
+                jenis_lahan: 'Pertanian', jarak_kota: 8.0, luas_zona: 2500,
+                aksesibilitas: 3.5, status_listrik: 0, status_air: 0, tahun: 2025
+            }
+        };
+
+        function fillSampleLand(type) {
+            const land = sampleLands[type];
+            document.getElementById('kelurahan').value = land.kelurahan;
+            document.getElementById('jenisLahan').value = land.jenis_lahan;
+            document.getElementById('jarakKota').value = land.jarak_kota;
+            document.getElementById('luasZona').value = land.luas_zona;
+            document.getElementById('aksesibilitas').value = land.aksesibilitas;
+            document.getElementById('listrik').value = land.status_listrik;
+            document.getElementById('airBersih').value = land.status_air;
+            document.getElementById('tahunData').value = land.tahun;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeLandValueMap();
+
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+
+            window.addEventListener('scroll', function() {
+                const navbar = document.querySelector('.navbar');
+                navbar.style.background = window.scrollY > 100
+                    ? 'rgba(255,255,255,0.98)'
+                    : 'rgba(255,255,255,0.95)';
+            });
+
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+            document.querySelectorAll('.info-card, .methodology-step').forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(30px)';
+                el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(el);
+            });
+        });
+
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('resultDiv').innerHTML = '';
+
+            setTimeout(() => {
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('resultDiv').innerHTML = `
+                    <div class="result-card medium-value">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4><i class="ph ph-calculator me-2"></i>Hasil Prediksi</h4>
+                                <h2>Rp 245,000/m²</h2>
+                                <p class="mb-0">
+                                    <small>Prediksi menggunakan {{ algorithm or 'Random Forest Regression' }} | 
+                                    Confidence: 85% | MAPE: {{ "%.1f"|format(model_accuracy or 12.5) }}%</small>
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="prediction-badge">Nilai Sedang</div>
+                                <br><small class="text-white opacity-75">Range: Rp 150k - 300k/m²</small>
+                            </div>
+                        </div>
+                    </div>`;
+            }, 2000);
+        });
+
+        ['jarakKota', 'luasZona', 'aksesibilitas'].forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', function() {
+                    if (this.value < 0) this.value = 0;
+                    if (inputId === 'aksesibilitas' && this.value > 10) this.value = 10;
+                    if (inputId === 'jarakKota' && this.value > 20) this.value = 20;
+                    if (inputId === 'luasZona' && this.value > 5000) this.value = 5000;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

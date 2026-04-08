@@ -1,0 +1,52 @@
+{
+  "total_files_created": 39,
+  "folders": {
+    "models": [
+      "complete_pipeline.pkl",
+      "label_encoders.pkl",
+      "prediction_functions.pkl",
+      "random_forest_model.pkl"
+    ],
+    "data": [
+      "dataset_info.json",
+      "feature_importance.csv",
+      "preprocessing_info.json",
+      "processed_dataset.csv",
+      "sorted_dataset.csv",
+      "splitting_info.json",
+      "testing_data_detail.csv",
+      "training_data_detail.csv",
+      "train_test_split.npz"
+    ],
+    "results": [
+      "detailed_predictions_vs_actual.csv",
+      "error_analysis.json",
+      "feature_importance_analysis.json",
+      "final_performance_summary.json",
+      "prediction_summary.json",
+      "random_forest_results.json",
+      "rf_predictions.npz",
+      "testing_predictions_detail.csv"
+    ],
+    "visualizations": [
+      "error_distribution.html",
+      "error_heatmap_kelurahan_tahun.html",
+      "error_per_jenis_lahan.html",
+      "error_per_tahun.html",
+      "feature_importance_bar.html",
+      "feature_importance_category.html",
+      "metrics_comparison_train_test.html",
+      "nilai_tanah_by_jenis_lahan.html",
+      "nilai_tanah_histogram.html",
+      "performance_by_kelurahan.html",
+      "peta_sebaran_nilai_tanah.html",
+      "prediksi_vs_aktual_scatter.html",
+      "residual_plot.html",
+      "trend_keseluruhan_nilai_tanah.html",
+      "trend_nilai_tanah_per_jenis_lahan.html",
+      "trend_nilai_tanah_per_kelurahan.html",
+      "tren_nilai_tanah_per_tahun.html",
+      "visualisasi_3d_nilai_tanah.html"
+    ]
+  }
+}

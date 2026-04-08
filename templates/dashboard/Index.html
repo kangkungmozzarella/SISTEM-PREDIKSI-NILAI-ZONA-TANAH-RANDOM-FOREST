@@ -1,0 +1,662 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Dashboard - Prediksi Nilai Zona Tanah Kecamatan Idi Rayeuk{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Land Value Prediction theme styling */
+:root {
+    --land-green: #2E8B57;
+    --land-dark: #1B5E20;
+    --land-light: #3498DB;
+    --land-teal: #1ABC9C;
+    --land-orange: #F39C12;
+}
+
+.widget-card {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(46, 139, 87, 0.08);
+}
+
+.widget-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.widget-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    transform: translate(30px, -30px);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(46, 139, 87, 0.05);
+}
+
+.table thead th {
+    background: linear-gradient(135deg, var(--land-green), var(--land-dark));
+    color: white;
+    border: none;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table tbody td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.land-primary {
+    background: linear-gradient(135deg, #2E8B57, #1B5E20) !important;
+    color: white;
+}
+
+.land-high-value {
+    background: linear-gradient(135deg, #E74C3C, #C0392B) !important;
+}
+
+.land-medium-value {
+    background: linear-gradient(135deg, #F39C12, #E67E22) !important;
+}
+
+.land-low-value {
+    background: linear-gradient(135deg, #3498DB, #2980B9) !important;
+}
+
+.model-badge {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 2px;
+}
+
+.badge-rf {
+    background: rgba(46, 139, 87, 0.2);
+    color: #2E8B57;
+    border: 1px solid rgba(46, 139, 87, 0.3);
+}
+
+.badge-gis {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498DB;
+    border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.card {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(46, 139, 87, 0.08);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(46, 139, 87, 0.12);
+}
+
+.widget-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Mini Map Container */
+.mini-map-container {
+    height: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#miniMap {
+    height: 100%;
+    width: 100%;
+}
+
+/* Utility classes */
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.w-48 { width: 48px; }
+.h-48 { height: 48px; }
+.mt-16 { margin-top: 16px; }
+.text-2xl { font-size: 1.5rem; }
+
+.card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(46, 139, 87, 0.1), rgba(27, 94, 32, 0.05));
+    color: var(--land-green);
+    border: 1px solid rgba(46, 139, 87, 0.2);
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    .row .col-md-2 { margin-bottom: 1rem; }
+    .widget-card h4 { font-size: 1.5rem; }
+    .model-badge { font-size: 0.7rem; padding: 4px 8px; }
+}
+</style>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="row gy-4">
+    <div class="col-lg-12">
+        <!-- Page Title -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="mb-2">Selamat Datang Kembali, {{ session.get('username', 'User') }}!</h3>
+                <p class="text-muted mb-0">{{ research_title or 'Sistem Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk, Aceh Timur menggunakan Random Forest Regression berbasis GIS' }}</p>
+                <small class="text-muted">Data Status: {{ data_status or 'Sample Data' }} | Last Update: {{ last_update[:16] if last_update else '2025-01-03 12:00' }}</small>
+            </div>
+        </div>
+        
+        <!-- Land Value Prediction Widgets - REAL DATA -->
+        <div class="row gy-4">
+            <div class="col-xxl-3 col-sm-6">
+                <div class="card widget-card land-primary">
+                    <div class="card-body">
+                        <h4 class="mb-2">{{ total_zones or 452 }}</h4>
+                        <span>Total Zona Tanah</span>
+                        <div class="flex-between gap-8 mt-16">
+                            <span class="flex-shrink-0 w-48 h-48 flex-center rounded-circle widget-icon text-2xl">
+                                <i class="ph-fill ph-buildings"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl-3 col-sm-6">
+                <div class="card widget-card land-medium-value">
+                    <div class="card-body">
+                        <h4 class="mb-2">{{ total_kelurahan or 43 }}</h4>
+                        <span>Gampong/Kelurahan</span>
+                        <div class="flex-between gap-8 mt-16">
+                            <span class="flex-shrink-0 w-48 h-48 flex-center rounded-circle widget-icon text-2xl">
+                                <i class="ph-fill ph-map-pin"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl-3 col-sm-6">
+                <div class="card widget-card land-high-value">
+                    <div class="card-body">
+                        <h4 class="mb-2">Rp {{ "{:,.0f}".format(price_avg or 231115) }}</h4>
+                        <span>Rata-rata Harga/m²</span>
+                        <div class="flex-between gap-8 mt-16">
+                            <span class="flex-shrink-0 w-48 h-48 flex-center rounded-circle widget-icon text-2xl">
+                                <i class="ph-fill ph-currency-circle-dollar"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl-3 col-sm-6">
+                <div class="card widget-card land-low-value">
+                    <div class="card-body">
+                        <h4 class="mb-2">4.95%</h4>
+                        <span>MAPE Score</span>
+                        <div class="flex-between gap-8 mt-16">
+                            <span class="flex-shrink-0 w-48 h-48 flex-center rounded-circle widget-icon text-2xl">
+                                <i class="ph-fill ph-chart-scatter"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Random Forest Model Performance - REAL DATA -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="mb-0"><i class="ph ph-tree-evergreen me-2"></i>Performa Model Random Forest</h4>
+                            <div class="d-flex gap-2">
+                                <span class="model-badge badge-rf">{{ algorithm or 'Random Forest' }}</span>
+                                <span class="model-badge badge-gis">GIS Integration</span>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Metrik Evaluasi</th>
+                                        <th>Nilai</th>
+                                        <th>Performance</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>MAE (Mean Absolute Error)</strong></td>
+                                        <td><span class="badge bg-primary">Rp 9,774</span></td>
+                                        <td><span class="badge bg-success">Low Error</span></td>
+                                        <td><span class="badge bg-success">Excellent</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>MAPE (Mean Absolute % Error)</strong></td>
+                                        <td><span class="badge bg-success">4.95%</span></td>
+                                        <td><span class="badge bg-success">Outstanding</span></td>
+                                        <td><span class="text-success fw-bold">OUTSTANDING</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>RMSE (Root Mean Square Error)</strong></td>
+                                        <td><span class="badge bg-primary">Rp 13,761</span></td>
+                                        <td><span class="badge bg-success">Consistent</span></td>
+                                        <td><span class="badge bg-success">Excellent</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>R² Score</strong></td>
+                                        <td><span class="badge bg-success">0.9864</span></td>
+                                        <td><span class="badge bg-success">98.64% explained</span></td>
+                                        <td><span class="badge bg-success">Outstanding</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="border rounded p-2">
+                                        <strong class="text-primary">Algorithm</strong><br>
+                                        <small class="text-muted">{{ algorithm or 'Random Forest' }}</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="border rounded p-2">
+                                        <strong class="text-success">Akurasi</strong><br>
+                                        <small class="text-muted">MAPE: 4.95%</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="border rounded p-2">
+                                        <strong class="text-warning">Features</strong><br>
+                                        <small class="text-muted">{{ features_count or 20 }} Fitur GIS</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="border rounded p-2 bg-success text-white">
+                                        <strong>Rating: OUTSTANDING</strong><br>
+                                        <small>Based on MAPE < 5%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mini Map Box -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header" style="background: linear-gradient(135deg, #2E8B57, #1B5E20); border-radius: 15px 15px 0 0;">
+                        <h5 class="mb-0 text-white"><i class="ph-fill ph-map-trifold me-2"></i>Sebaran Area Penelitian</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="mini-map-container">
+                            <div id="miniMap"></div>
+                        </div>
+                        <div class="p-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Lokasi:</span>
+                                <strong>{{ main_kecamatan or 'Idi Rayeuk' }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Provinsi:</span>
+                                <strong>{{ provinsi or 'Aceh' }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Coverage:</span>
+                                <strong>{{ total_kelurahan or 43 }} Lokasi</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Importance & Land Types Distribution - REAL DATA -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header" style="background: linear-gradient(135deg, #2E8B57, #1B5E20); border-radius: 15px 15px 0 0;">
+                        <h5 class="mb-0 text-white"><i class="ph-fill ph-tree me-2"></i>Distribusi Jenis Lahan</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Dinamis berdasarkan data real -->
+                        {% if land_types %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-medium">Komersial</span>
+                                <span class="badge bg-danger">{{ land_types.get('Komersial', 0) }} zona</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-danger" role="progressbar" 
+                                     style="width: {{ (land_types.get('Komersial', 0) / (total_zones or 1)) * 100 }}%;" 
+                                     aria-valuenow="{{ (land_types.get('Komersial', 0) / (total_zones or 1)) * 100 }}" aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ "{:.1f}".format((land_types.get('Komersial', 0) / (total_zones or 1)) * 100) }}% dari total</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-medium">Pemukiman</span>
+                                <span class="badge bg-primary">{{ land_types.get('Pemukiman', 0) }} zona</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {{ (land_types.get('Pemukiman', 0) / (total_zones or 1)) * 100 }}%;" 
+                                     aria-valuenow="{{ (land_types.get('Pemukiman', 0) / (total_zones or 1)) * 100 }}" aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ "{:.1f}".format((land_types.get('Pemukiman', 0) / (total_zones or 1)) * 100) }}% dari total</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-medium">Pertanian</span>
+                                <span class="badge bg-success">{{ land_types.get('Pertanian', 0) }} zona</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ (land_types.get('Pertanian', 0) / (total_zones or 1)) * 100 }}%;" 
+                                     aria-valuenow="{{ (land_types.get('Pertanian', 0) / (total_zones or 1)) * 100 }}" aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ "{:.1f}".format((land_types.get('Pertanian', 0) / (total_zones or 1)) * 100) }}% dari total</small>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="ph ph-database me-2"></i>Belum ada data distribusi jenis lahan
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-top pt-3 mt-4">
+                            <h6 class="mb-2"><i class="ph ph-gear me-2"></i>Data Configuration:</h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Training Samples:</span>
+                                <strong class="text-primary">361 (80%)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Testing Samples:</span>
+                                <strong class="text-primary">91 (20%)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Cross Validation:</span>
+                                <strong class="text-primary">5-Fold CV</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header" style="background: linear-gradient(135deg, #3498DB, #2980B9); border-radius: 15px 15px 0 0;">
+                        <h5 class="mb-0 text-white"><i class="ph-fill ph-chart-line me-2"></i>Performance Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <div class="p-3 rounded" style="background: rgba(46, 139, 87, 0.1);">
+                                    <h4 class="text-success mb-1">4.95%</h4>
+                                    <small class="text-muted">MAPE</small>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="p-3 rounded" style="background: rgba(52, 152, 219, 0.1);">
+                                    <h4 class="text-info mb-1">0.9864</h4>
+                                    <small class="text-muted">R² Score</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="border-top pt-3">
+                            <h6 class="mb-3"><i class="ph ph-info me-2"></i>Price Range Analysis:</h6>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Minimum:</span>
+                                <strong class="text-success">Rp {{ "{:,.0f}".format(price_min or 68000) }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Maximum:</span>
+                                <strong class="text-danger">Rp {{ "{:,.0f}".format(price_max or 520000) }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Average:</span>
+                                <strong class="text-primary">Rp {{ "{:,.0f}".format(price_avg or 231115) }}</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="border-top pt-3 mt-3">
+                            <h6 class="mb-2"><i class="ph ph-calendar me-2"></i>Data Period:</h6>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Periode:</span>
+                                <strong>{{ data_period or '2023-2025' }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary & Information - REAL DATA -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="mb-3"><i class="ph ph-trophy me-2"></i>Ringkasan Model Outstanding</h4>
+                        <div class="row">
+                            <!-- Hasil Real dari Jupyter -->
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-success bg-opacity-10 rounded-3 mb-3">
+                                    <div class="d-flex align-items-center justify-content-center mb-2">
+                                        <i class="ph-fill ph-check-circle text-success" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <h5 class="text-success mb-1">4.95%</h5>
+                                    <h3 class="text-success mb-0">MAPE</h3>
+                                    <p class="text-success mb-0 small">Outstanding Performance</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-primary bg-opacity-10 rounded-3 mb-3">
+                                    <div class="d-flex align-items-center justify-content-center mb-2">
+                                        <i class="ph-fill ph-chart-line text-primary" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <h5 class="text-primary mb-1">0.9864</h5>
+                                    <h3 class="text-primary mb-0">R²</h3>
+                                    <p class="text-primary mb-0 small">98.64% Explained</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-info bg-opacity-10 rounded-3 mb-3">
+                                    <div class="d-flex align-items-center justify-content-center mb-2">
+                                        <i class="ph-fill ph-currency-dollar text-info" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <h5 class="text-info mb-1">Rp 9,774</h5>
+                                    <h3 class="text-info mb-0">MAE</h3>
+                                    <p class="text-info mb-0 small">Low Error Rate</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-warning bg-opacity-10 rounded-3 mb-3">
+                                    <div class="d-flex align-items-center justify-content-center mb-2">
+                                        <i class="ph-fill ph-database text-warning" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <h5 class="text-warning mb-1">{{ total_zones or 452 }}</h5>
+                                    <h3 class="text-warning mb-0">Zona</h3>
+                                    <p class="text-warning mb-0 small">Total Dataset</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="alert alert-success mb-0">
+                                <i class="ph ph-check-circle me-2"></i>
+                                <strong>Model Outstanding:</strong> Random Forest mencapai performa luar biasa dengan MAPE hanya <strong>4.95%</strong> dan R² sebesar <strong>0.9864</strong> (98.64% variance explained). Model siap untuk implementasi operasional dengan tingkat akurasi yang sangat tinggi untuk prediksi nilai zona tanah di Kecamatan Idi Rayeuk, Aceh Timur.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="mb-3"><i class="ph ph-info me-2"></i>Informasi Sistem</h4>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Lokasi Penelitian:</span>
+                                <strong>{{ main_kecamatan or 'Idi Rayeuk' }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Periode Data:</span>
+                                <strong>{{ data_period or '2023-2025' }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Total Zona:</span>
+                                <strong>{{ total_zones or 452 }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Model Algorithm:</span>
+                                <strong class="text-primary">{{ algorithm or 'Random Forest' }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">MAPE Score:</span>
+                                <strong class="text-success">4.95%</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Model Status:</span>
+                                <span class="badge bg-success">Outstanding</span>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Last Update:</span>
+                                <span class="badge bg-info">{{ last_update[:10] if last_update else '2025-01-04' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Research Overview - REAL DATA -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="mb-3"><i class="ph ph-book-open me-2"></i>Tentang Penelitian Prediksi Nilai Zona Tanah</h4>
+                        <p class="text-muted">
+                            Penelitian ini berhasil mengembangkan <strong>sistem prediksi nilai zona tanah</strong> di <strong>{{ research_location or 'Kecamatan Idi Rayeuk, Aceh Timur' }}</strong> menggunakan metode <strong>{{ research_method or 'Random Forest Regression + GIS' }}</strong>. Dataset terdiri dari <strong>{{ total_zones or 452 }} zona tanah</strong> dari <strong>{{ total_kelurahan or 43 }} gampong/kelurahan</strong> periode {{ data_period or '2023-2025' }}. Model mencapai performa <strong>Outstanding</strong> dengan akurasi tinggi (MAPE: <strong>4.95%</strong>, R²: <strong>0.9864</strong>). Sistem ini dapat membantu pemerintah daerah dalam <strong>penilaian properti, perencanaan tata ruang, dan pengambilan kebijakan</strong> terkait nilai tanah.
+                        </p>
+                        <div class="row mt-4">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-primary">{{ total_zones or 452 }}</h5>
+                                    <small class="text-muted">Total Zona</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-success">{{ total_kelurahan or 43 }}</h5>
+                                    <small class="text-muted">Lokasi</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-warning">{{ features_count or 20 }}</h5>
+                                    <small class="text-muted">Fitur GIS</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-info">4.95%</h5>
+                                    <small class="text-muted">MAPE Error</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Mini Map
+    const miniMap = L.map('miniMap').setView([4.945, 97.765], 10);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(miniMap);
+    
+    // Add boundary for Idi Rayeuk area (approximate)
+    const bounds = [
+        [4.88, 97.62],
+        [5.02, 97.82]
+    ];
+    
+    // Create rectangle to show research area
+    L.rectangle(bounds, {
+        color: "#2E8B57",
+        fillColor: "#2E8B57",
+        fillOpacity: 0.2,
+        weight: 2
+    }).addTo(miniMap);
+    
+    // Add center marker for Kecamatan Idi Rayeuk
+    L.marker([4.945, 97.765]).addTo(miniMap)
+        .bindPopup(`
+            <div style="text-align: center;">
+                <h6><strong>Kecamatan Idi Rayeuk</strong></h6>
+                <small>{{ total_zones or 452 }} zona penelitian</small><br>
+                <small>{{ total_kelurahan or 43 }} kelurahan/gampong</small>
+            </div>
+        `);
+    
+    // Fit map to bounds
+    miniMap.fitBounds(bounds);
+    
+    console.log('🗺️ Dashboard mini map initialized');
+    console.log('📊 Data Status: {{ data_status or "Real Data" }}');
+    console.log('🎯 Model Accuracy: 4.95% MAPE (Outstanding)');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,738 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Dataset Zona Tanah - Prediksi Nilai Tanah Idi Rayeuk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dataset-overview {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stats-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(46, 139, 87, 0.1);
+        transition: transform 0.3s ease;
+        background: white;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stats-card h5 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .stats-item {
+        margin-bottom: 0.75rem;
+    }
+    
+    .stats-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .stats-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .table-dataset thead th {
+        background: var(--primary-color);
+        color: white;
+        font-size: 0.9rem;
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .table-dataset tbody td {
+        text-align: center;
+        vertical-align: middle;
+        font-size: 0.85rem;
+    }
+    
+    .land-type-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .land-komersial { background-color: #E74C3C; color: white; }
+    .land-pemukiman { background-color: #3498DB; color: white; }
+    .land-pertanian { background-color: #27AE60; color: white; }
+    
+    .value-high { color: #E74C3C; font-weight: bold; }
+    .value-medium { color: #F39C12; font-weight: bold; }
+    .value-low { color: #3498DB; font-weight: bold; }
+    
+    .coordinate-text {
+        font-size: 0.8rem;
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* Map Container */
+    .dataset-map-container {
+        height: 500px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+
+    #datasetMap {
+        height: 100%;
+        width: 100%;
+    }
+
+    /* Map Filter Bar */
+    .map-filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .map-filter-btn {
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 2px solid #ddd;
+        background: white;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .map-filter-btn.active, .map-filter-btn:hover {
+        color: white;
+        border-color: transparent;
+    }
+
+    .map-filter-btn[data-type="Semua"].active { background: #555; }
+    .map-filter-btn[data-type="Komersial"].active { background: #E74C3C; border-color: #E74C3C; }
+    .map-filter-btn[data-type="Pemukiman"].active { background: #3498DB; border-color: #3498DB; }
+    .map-filter-btn[data-type="Pertanian"].active { background: #27AE60; border-color: #27AE60; }
+
+    /* Map Legend */
+    .map-legend-dataset {
+        background: white;
+        padding: 10px 14px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        font-size: 0.8rem;
+        line-height: 1.8;
+    }
+
+    .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    /* Map loading state */
+    .map-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-size: 0.85rem;
+        color: #555;
+    }
+
+    /* Leaflet popup custom */
+    .custom-popup .leaflet-popup-content-wrapper {
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .custom-popup .leaflet-popup-content {
+        margin: 0;
+        min-width: 220px;
+    }
+
+    .popup-header {
+        padding: 10px 14px 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 0;
+    }
+
+    .popup-header.komersial { background: #E74C3C; }
+    .popup-header.pemukiman { background: #3498DB; }
+    .popup-header.pertanian { background: #27AE60; }
+
+    .popup-body {
+        padding: 10px 14px 12px;
+        font-size: 0.8rem;
+    }
+
+    .popup-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .popup-row:last-child { border-bottom: none; }
+    .popup-label { color: #888; }
+    .popup-val { font-weight: 600; color: #333; }
+
+    .popup-tahun-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        margin-top: 8px;
+    }
+
+    .popup-tahun-item {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 4px 6px;
+        text-align: center;
+        font-size: 0.75rem;
+    }
+
+    .popup-tahun-item .tahun-label { color: #888; display: block; font-size: 0.7rem; }
+    .popup-tahun-item .tahun-val { font-weight: 700; color: #2c3e50; }
+
+    /* DataTables styling */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.5rem 0.75rem !important;
+        margin: 0 3px !important;
+        border-radius: 0.25rem !important;
+        min-width: 40px !important;
+        text-align: center !important;
+        display: inline-block !important;
+        line-height: 1 !important;
+        box-sizing: border-box !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--primary-color) !important;
+        color: white !important;
+        border: 1px solid var(--primary-color) !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) {
+        background: rgba(46, 139, 87, 0.1) !important;
+        border: 1px solid var(--primary-color) !important;
+        color: var(--primary-color) !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed !important;
+    }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter { margin-bottom: 1rem; }
+</style>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="row gy-4">
+    <div class="col-lg-12">
+        <!-- Page Title -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-2">Dataset Zona Tanah</h3>
+                        <p class="text-muted mb-0">Data zona tanah Kecamatan Idi Rayeuk, Aceh Timur periode {{ stats.years|join('-') if stats.years else '2023-2025' }}</p>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="ph ph-upload-simple me-2"></i>Upload CSV
+                        </button>
+                        <a href="{{ url_for('homepage') }}" class="btn btn-outline-primary me-2">
+                            <i class="ph ph-globe me-2"></i>Lihat Peta
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                            <i class="ph ph-squares-four me-2"></i>Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dataset Overview -->
+        <div class="dataset-overview">
+            <div class="row">
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="text-center">
+                        <h3 class="mb-0">{{ stats.total_zones or 0 }}</h3>
+                        <p class="mb-0">Total Zona</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="text-center">
+                        <h3 class="mb-0">{{ stats.total_kelurahan or 0 }}</h3>
+                        <p class="mb-0">Kelurahan/Gampong</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="text-center">
+                        <h3 class="mb-0">Rp {{ "{:,.0f}".format(stats.price_stats.max) if stats.price_stats and stats.price_stats.max else '0' }}</h3>
+                        <p class="mb-0">Nilai Tertinggi</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h3 class="mb-0">Rp {{ "{:,.0f}".format(stats.price_stats.mean) if stats.price_stats and stats.price_stats.mean else '0' }}</h3>
+                        <p class="mb-0">Rata-rata Nilai</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dataset Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card h-100">
+                    <h5><i class="ph ph-map-trifold me-2"></i>Sebaran Geografis</h5>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Total Kelurahan</span>
+                        <span class="stats-value">{{ stats.total_kelurahan or 0 }}</span>
+                    </div>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Periode Data</span>
+                        <span class="stats-value">{{ stats.years|length or 0 }} Tahun</span>
+                    </div>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Min Nilai</span>
+                        <span class="stats-value">Rp {{ "{:,.0f}".format(stats.price_stats.min) if stats.price_stats and stats.price_stats.min else '0' }}</span>
+                    </div>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Max Nilai</span>
+                        <span class="stats-value">Rp {{ "{:,.0f}".format(stats.price_stats.max) if stats.price_stats and stats.price_stats.max else '0' }}</span>
+                    </div>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Median</span>
+                        <span class="stats-value">Rp {{ "{:,.0f}".format(stats.price_stats.median) if stats.price_stats and stats.price_stats.median else '0' }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card h-100">
+                    <h5><i class="ph ph-circle-half-tilt me-2"></i>Jenis Penggunaan Lahan</h5>
+                    <div class="map-legend-dataset mb-3">
+                        <div><span class="legend-dot" style="background:#E74C3C;"></span>Komersial</div>
+                        <div><span class="legend-dot" style="background:#3498DB;"></span>Pemukiman</div>
+                        <div><span class="legend-dot" style="background:#27AE60;"></span>Pertanian</div>
+                    </div>
+                    <div class="text-muted" style="font-size: 0.8rem;">
+                        <i class="ph ph-info me-1"></i>Klik marker pada peta untuk melihat detail bidang tanah.
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card h-100">
+                    <h5><i class="ph ph-tree me-2"></i>Distribusi Lahan</h5>
+                    <div class="text-center mb-2">
+                        <h4 class="text-danger mb-0">{{ stats.land_types.get('Komersial', 0) }}</h4>
+                        <span class="land-type-badge land-komersial">Komersial</span>
+                    </div>
+                    <div class="text-center mb-2">
+                        <h4 class="text-primary mb-0">{{ stats.land_types.get('Pemukiman', 0) }}</h4>
+                        <span class="land-type-badge land-pemukiman">Pemukiman</span>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="text-success mb-0">{{ stats.land_types.get('Pertanian', 0) }}</h4>
+                        <span class="land-type-badge land-pertanian">Pertanian</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card h-100">
+                    <h5><i class="ph ph-calendar me-2"></i>Tahun Data</h5>
+                    {% if stats.years %}
+                        {% for year in stats.years %}
+                        <div class="stats-item d-flex justify-content-between align-items-center">
+                            <span class="stats-label">Tahun {{ loop.index }}</span>
+                            <span class="badge bg-secondary fs-6">{{ year }}</span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    <hr>
+                    <div class="stats-item d-flex justify-content-between">
+                        <span class="stats-label">Total Zona</span>
+                        <span class="stats-value text-success">{{ stats.total_zones or 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Peta Full Width -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="ph ph-map-pin me-2"></i>Peta Sebaran Bidang Tanah</h5>
+                        <span id="map-zone-count" class="text-muted" style="font-size:0.85rem;"></span>
+                    </div>
+
+                    <!-- Filter buttons -->
+                    <div class="map-filter-bar mb-3">
+                        <span style="font-size:0.85rem; color:#888; font-weight:500;">Filter Jenis Lahan:</span>
+                        <button class="map-filter-btn active" data-type="Semua">Semua</button>
+                        <button class="map-filter-btn" data-type="Komersial">🔴 Komersial</button>
+                        <button class="map-filter-btn" data-type="Pemukiman">🔵 Pemukiman</button>
+                        <button class="map-filter-btn" data-type="Pertanian">🟢 Pertanian</button>
+                    </div>
+
+                    <div class="dataset-map-container">
+                        <div id="datasetMap"></div>
+                        <div id="mapLoading" class="map-loading">
+                            <i class="ph ph-spinner me-1"></i> Memuat data bidang tanah...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dataset Table -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0"><i class="ph ph-table me-2"></i>Data Zona Tanah Lengkap</h5>
+                    <div>
+                        <form id="resetForm" action="{{ url_for('dataset_reset') }}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger me-2" onclick="return confirm('Anda yakin ingin mereset semua data?')">
+                                <i class="ph ph-trash me-1"></i>Reset Data
+                            </button>
+                        </form>
+                        <small class="text-muted">{{ total_records or 0 }} record</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="datasetTable" class="table table-hover table-dataset">
+                        <thead>
+                            <tr>
+                                <th>ID Zona</th>
+                                <th>Kelurahan</th>
+                                <th>Koordinat</th>
+                                <th>Luas (m²)</th>
+                                <th>Nilai Tanah</th>
+                                <th>Jenis Lahan</th>
+                                <th>Jarak Kota (km)</th>
+                                <th>Aksesibilitas</th>
+                                <th>Tahun</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if dataset %}
+                                {% for data in dataset %}
+                                <tr>
+                                    <td><strong>{{ data.id_zona }}</strong></td>
+                                    <td>{{ data.nama_kelurahan }}</td>
+                                    <td class="coordinate-text">
+                                        {{ "%.6f"|format(data.koordinat_latitude) }}<br>
+                                        {{ "%.6f"|format(data.koordinat_longitude) }}
+                                    </td>
+                                    <td>{{ "{:,.0f}".format(data.luas_zona_m2) }}</td>
+                                    <td class="{% if data.nilai_tanah_per_m2 > 300000 %}value-high{% elif data.nilai_tanah_per_m2 > 150000 %}value-medium{% else %}value-low{% endif %}">
+                                        Rp {{ "{:,.0f}".format(data.nilai_tanah_per_m2) }}
+                                    </td>
+                                    <td>
+                                        {% if data.jenis_penggunaan_lahan == 'Komersial' %}
+                                            <span class="land-type-badge land-komersial">{{ data.jenis_penggunaan_lahan }}</span>
+                                        {% elif data.jenis_penggunaan_lahan == 'Pemukiman' %}
+                                            <span class="land-type-badge land-pemukiman">{{ data.jenis_penggunaan_lahan }}</span>
+                                        {% else %}
+                                            <span class="land-type-badge land-pertanian">{{ data.jenis_penggunaan_lahan }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ data.jarak_pusat_kota_km }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: {{ (data.aksesibilitas_skor / 10) * 100 }}%"></div>
+                                        </div>
+                                        <small>{{ data.aksesibilitas_skor }}/10</small>
+                                    </td>
+                                    <td>{{ data.tahun_data }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        <i class="ph ph-database me-2"></i>Belum ada data zona tanah dalam database.
+                                        <br><small>Pastikan tabel tbl_dataset sudah diisi dengan data penelitian.</small>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">Upload Dataset CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('dataset_upload') }}" method="post" enctype="multipart/form-data">
+                    <div class="upload-box">
+                        <i class="ph ph-cloud-arrow-up upload-icon"></i>
+                        <h6>Pilih file CSV untuk diupload</h6>
+                        <p class="text-muted small mb-3">
+                            Format kolom yang diperlukan:<br>
+                            <strong>id_zona, nama_kelurahan, koordinat_latitude, koordinat_longitude, nomor_zona, luas_zona_m2, nilai_tanah_per_m2, jenis_penggunaan_lahan, jarak_pusat_kota_km, elevasi_mdpl, kemiringan_lereng_persen, kepadatan_penduduk_km2, jarak_jalan_utama_m, jarak_sekolah_m, jarak_puskesmas_m, jarak_pasar_m, status_listrik, status_air_bersih, aksesibilitas_skor, tahun_data</strong>
+                        </p>
+                        <input type="file" name="file" class="form-control mb-3" accept=".csv" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ph ph-upload me-2"></i>Upload Dataset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    let datasetMap;
+    let allMarkers = [];
+    let activeFilter = 'Semua';
+
+    // Warna marker per jenis lahan
+    const markerColors = {
+        'Komersial': '#E74C3C',
+        'Pemukiman': '#3498DB',
+        'Pertanian': '#27AE60'
+    };
+
+    // Buat custom icon lingkaran berwarna
+    function createCircleIcon(color) {
+        return L.divIcon({
+            className: '',
+            html: `<div style="
+                width: 14px; height: 14px;
+                background: ${color};
+                border: 2px solid white;
+                border-radius: 50%;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+            "></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+            popupAnchor: [0, -10]
+        });
+    }
+
+    // Format rupiah
+    function formatRupiah(val) {
+        return 'Rp ' + parseInt(val).toLocaleString('id-ID');
+    }
+
+    // Build popup HTML
+    function buildPopup(zone) {
+        const color = markerColors[zone.jenis_penggunaan_lahan] || '#555';
+        const typeClass = zone.jenis_penggunaan_lahan.toLowerCase();
+
+        // Baris nilai per tahun
+        let tahunRows = '';
+        if (zone.nilai_per_tahun && Object.keys(zone.nilai_per_tahun).length > 0) {
+            tahunRows = `
+                <div style="margin-top:8px;">
+                    <div class="popup-label" style="margin-bottom:4px;">Nilai per Tahun:</div>
+                    <div class="popup-tahun-grid">
+                        ${Object.entries(zone.nilai_per_tahun).sort().map(([thn, val]) => `
+                            <div class="popup-tahun-item">
+                                <span class="tahun-label">${thn}</span>
+                                <span class="tahun-val">${formatRupiah(val)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
+        return `
+            <div>
+                <div class="popup-header ${typeClass}">
+                    <i class="ph ph-map-pin me-1"></i>${zone.nama_kelurahan}
+                    <span style="float:right; opacity:0.85; font-size:0.75rem;">Zona ${zone.nomor_zona}</span>
+                </div>
+                <div class="popup-body">
+                    <div class="popup-row">
+                        <span class="popup-label">ID Zona</span>
+                        <span class="popup-val">${zone.id_zona}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Jenis Lahan</span>
+                        <span class="popup-val">${zone.jenis_penggunaan_lahan}</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Luas</span>
+                        <span class="popup-val">${parseInt(zone.luas_zona_m2).toLocaleString('id-ID')} m²</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Nilai (terbaru)</span>
+                        <span class="popup-val" style="color:${color};">${formatRupiah(zone.nilai_tanah_per_m2)}/m²</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Jarak Pusat Kota</span>
+                        <span class="popup-val">${zone.jarak_pusat_kota_km} km</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Aksesibilitas</span>
+                        <span class="popup-val">${zone.aksesibilitas_skor}/10</span>
+                    </div>
+                    <div class="popup-row">
+                        <span class="popup-label">Listrik / Air</span>
+                        <span class="popup-val">
+                            ${zone.status_listrik ? '✅' : '❌'} / ${zone.status_air_bersih ? '✅' : '❌'}
+                        </span>
+                    </div>
+                    ${tahunRows}
+                </div>
+            </div>`;
+    }
+
+    // Render markers ke peta
+    function renderMarkers(zonesData, filterType) {
+        // Hapus semua marker lama
+        allMarkers.forEach(m => datasetMap.removeLayer(m));
+        allMarkers = [];
+
+        const filtered = filterType === 'Semua'
+            ? zonesData
+            : zonesData.filter(z => z.jenis_penggunaan_lahan === filterType);
+
+        filtered.forEach(zone => {
+            const color = markerColors[zone.jenis_penggunaan_lahan] || '#888';
+            const marker = L.marker([zone.lat, zone.lng], {
+                icon: createCircleIcon(color)
+            });
+
+            marker.bindPopup(buildPopup(zone), {
+                maxWidth: 260,
+                className: 'custom-popup'
+            });
+
+            marker.addTo(datasetMap);
+            allMarkers.push(marker);
+        });
+
+        // Update counter
+        document.getElementById('map-zone-count').textContent =
+            `${filtered.length} bidang tanah ditampilkan`;
+    }
+
+    // Initialize map
+    function initializeDatasetMap() {
+        datasetMap = L.map('datasetMap').setView([4.945, 97.765], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(datasetMap);
+
+        // Fetch data zona dari API
+        fetch('/api/dataset/zones')
+            .then(res => res.json())
+            .then(response => {
+                // Sembunyikan loading
+                const loading = document.getElementById('mapLoading');
+                if (loading) loading.style.display = 'none';
+
+                if (response.status === 'success' && response.data.length > 0) {
+                    const zonesData = response.data;
+
+                    // Render semua marker
+                    renderMarkers(zonesData, 'Semua');
+
+                    // Filter button events
+                    document.querySelectorAll('.map-filter-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
+                            this.classList.add('active');
+                            activeFilter = this.dataset.type;
+                            renderMarkers(zonesData, activeFilter);
+                        });
+                    });
+
+                    console.log(`✅ Peta: ${response.total} zona bidang tanah dimuat`);
+                } else {
+                    const loading = document.getElementById('mapLoading');
+                    if (loading) loading.textContent = 'Tidak ada data zona tersedia.';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching zones:', err);
+                const loading = document.getElementById('mapLoading');
+                if (loading) loading.textContent = 'Gagal memuat data peta.';
+            });
+    }
+
+    $(document).ready(function() {
+        // Init peta
+        initializeDatasetMap();
+
+        // DataTables
+        if ($('#datasetTable tbody tr').length > 0 && !$('#datasetTable tbody tr td').hasClass('text-center')) {
+            $('#datasetTable').DataTable({
+                pageLength: 25,
+                order: [[8, 'desc'], [0, 'asc']],
+                language: {
+                    search: "Cari:",
+                    lengthMenu: "Tampilkan _MENU_ data",
+                    info: "Menampilkan _START_ - _END_ dari _TOTAL_ data zona",
+                    infoEmpty: "Menampilkan 0 - 0 dari 0 data",
+                    infoFiltered: "(difilter dari _MAX_ data)",
+                    zeroRecords: "Tidak ada data zona yang cocok",
+                    paginate: {
+                        first: "&laquo;",
+                        last: "&raquo;",
+                        next: "&rsaquo;",
+                        previous: "&lsaquo;"
+                    }
+                },
+                columnDefs: [
+                    { targets: [2], orderable: false },
+                    { targets: [7], orderable: true, type: 'num' }
+                ],
+                responsive: true
+            });
+        }
+
+        // Flash message auto-hide
+        setTimeout(function() { $('.alert').fadeOut('slow'); }, 5000);
+
+        console.log('📊 Dataset zona tanah loaded:', {{ total_records or 0 }}, 'records');
+    });
+</script>
+{% endblock %}

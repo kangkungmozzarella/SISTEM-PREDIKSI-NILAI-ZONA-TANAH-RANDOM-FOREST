@@ -1,0 +1,455 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Tentang Penelitian - Prediksi Nilai Zona Tanah Idi Rayeuk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tentang-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .info-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(46, 139, 87, 0.1);
+        transition: transform 0.3s ease;
+        background: white;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    .info-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .info-card h5 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(46, 139, 87, 0.05);
+        border-radius: 10px;
+        border: 1px solid rgba(46, 139, 87, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+    
+    .tech-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        margin: 0.2rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .objective-item {
+        padding: 0.8rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .objective-item:last-child {
+        border-bottom: none;
+    }
+    
+    .benefit-card {
+        background: rgba(52, 152, 219, 0.05);
+        border-left: 4px solid var(--accent-color);
+        padding: 1rem;
+        margin-bottom: 0.8rem;
+        border-radius: 0 10px 10px 0;
+    }
+    
+    .methodology-flow {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1rem 0;
+    }
+    
+    .flow-step {
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+        padding: 1rem;
+        margin: 0.5rem;
+        background: white;
+        border: 2px solid var(--primary-color);
+        border-radius: 15px;
+        position: relative;
+    }
+    
+    .flow-step::after {
+        content: '→';
+        position: absolute;
+        right: -25px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.5rem;
+        color: var(--primary-color);
+    }
+    
+    .flow-step:last-child::after {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .methodology-flow {
+            flex-direction: column;
+        }
+        
+        .flow-step::after {
+            content: '↓';
+            right: 50%;
+            top: auto;
+            bottom: -25px;
+            transform: translateX(50%);
+        }
+        
+        .flow-step:last-child::after {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row gy-4">
+    <div class="col-lg-12">
+        <!-- Header Penelitian -->
+        <div class="tentang-header">
+            <div class="text-center">
+                <h1 class="mb-3">{{ research_title or 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk Aceh Timur' }}</h1>
+                <p class="lead mb-2">Menggunakan Metode Random Forest Regression Berbasis Sistem Informasi Geografis</p>
+                <div class="mt-4">
+                    <span class="badge bg-success me-2 px-3 py-2">{{ algorithm or 'Random Forest' }}</span>
+                    <span class="badge bg-primary me-2 px-3 py-2">WebGIS</span>
+                    <span class="badge bg-warning px-3 py-2">Machine Learning</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informasi Penelitian -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h5><i class="ph ph-map-pin me-2"></i>Lokasi Penelitian</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Wilayah:</strong></td>
+                            <td>{{ research_location or 'Kecamatan Idi Rayeuk, Aceh Timur' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Koordinat:</strong></td>
+                            <td>4°53'N - 5°1'N, 97°38'E - 97°49'E</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Luas Area:</strong></td>
+                            <td>±150 km²</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Kelurahan:</strong></td>
+                            <td>{{ total_kelurahan or 43 }} lokasi</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tahun Penelitian:</strong></td>
+                            <td>{{ year or '2025' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h5><i class="ph ph-chart-bar me-2"></i>Rangkuman Dataset</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Total Zona:</strong></td>
+                            <td>{{ total_zones or 452 }} zona tanah</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Periode Data:</strong></td>
+                            <td>{{ data_period or '2023-2025' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fitur Analisis:</strong></td>
+                            <td>{{ features_count or 20 }} variabel</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Harga Minimum:</strong></td>
+                            <td>Rp {{ "{:,.0f}".format(price_range.min if price_range else 68000) }}/m²</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Harga Maksimum:</strong></td>
+                            <td>Rp {{ "{:,.0f}".format(price_range.max if price_range else 520000) }}/m²</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistik Performa Model -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="info-card">
+                    <h5><i class="ph ph-trophy me-2"></i>Hasil Performa Model</h5>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ model_performance.mape if model_performance else '4.95%' }}</div>
+                            <div class="stat-label">MAPE Score</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ model_performance.r2 if model_performance else '0.9864' }}</div>
+                            <div class="stat-label">R² Score</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ model_performance.status if model_performance else 'Outstanding' }}</div>
+                            <div class="stat-label">Performance</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ total_zones or 452 }}</div>
+                            <div class="stat-label">Total Zona</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ total_kelurahan or 43 }}</div>
+                            <div class="stat-label">Kelurahan</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ features_count or 20 }}</div>
+                            <div class="stat-label">Fitur</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tujuan Penelitian -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="info-card">
+                    <h5><i class="ph ph-target me-2"></i>Tujuan Penelitian</h5>
+                    
+                    <h6 class="text-primary mt-4 mb-3">Tujuan Utama</h6>
+                    <p class="mb-4">{{ main_objective or 'Mengembangkan sistem prediksi nilai zona tanah yang akurat menggunakan machine learning dan GIS untuk mendukung perencanaan tata ruang dan penilaian properti' }}</p>
+                    
+                    <h6 class="text-primary mb-3">Tujuan Khusus</h6>
+                    {% if specific_objectives %}
+                    {% for objective in specific_objectives %}
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>{{ objective }}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>Menganalisis faktor-faktor yang mempengaruhi nilai zona tanah
+                    </div>
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>Mengimplementasikan algoritma Random Forest untuk prediksi nilai tanah
+                    </div>
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>Mengintegrasikan sistem prediksi dengan platform WebGIS
+                    </div>
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>Mengevaluasi akurasi model prediksi yang dikembangkan
+                    </div>
+                    <div class="objective-item">
+                        <i class="ph ph-check-circle text-success me-2"></i>Memberikan rekomendasi untuk perencanaan tata ruang wilayah
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Metodologi -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="info-card">
+                    <h5><i class="ph ph-gear me-2"></i>Metodologi Penelitian</h5>
+                    
+                    <div class="methodology-flow">
+                        <div class="flow-step">
+                            <i class="ph ph-database text-primary mb-2" style="font-size: 2rem;"></i>
+                            <h6>Pengumpulan Data</h6>
+                            <small>Survey lapangan & data sekunder</small>
+                        </div>
+                        <div class="flow-step">
+                            <i class="ph ph-broom text-primary mb-2" style="font-size: 2rem;"></i>
+                            <h6>Preprocessing</h6>
+                            <small>Cleaning & feature engineering</small>
+                        </div>
+                        <div class="flow-step">
+                            <i class="ph ph-tree text-primary mb-2" style="font-size: 2rem;"></i>
+                            <h6>Random Forest</h6>
+                            <small>Training & optimization</small>
+                        </div>
+                        <div class="flow-step">
+                            <i class="ph ph-chart-line text-primary mb-2" style="font-size: 2rem;"></i>
+                            <h6>Evaluasi</h6>
+                            <small>MAPE, MAE, RMSE, R²</small>
+                        </div>
+                        <div class="flow-step">
+                            <i class="ph ph-globe text-primary mb-2" style="font-size: 2rem;"></i>
+                            <h6>WebGIS</h6>
+                            <small>Implementasi sistem</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teknologi yang Digunakan -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h5><i class="ph ph-code me-2"></i>Backend & Machine Learning</h5>
+                    {% if technologies and technologies.backend %}
+                    {% for tech in technologies.backend %}
+                    <span class="tech-badge">{{ tech }}</span>
+                    {% endfor %}
+                    {% else %}
+                    <span class="tech-badge">Python</span>
+                    <span class="tech-badge">Flask</span>
+                    <span class="tech-badge">Scikit-learn</span>
+                    <span class="tech-badge">PyMySQL</span>
+                    <span class="tech-badge">Pandas</span>
+                    <span class="tech-badge">NumPy</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <h5><i class="ph ph-monitor me-2"></i>Frontend & GIS</h5>
+                    {% if technologies and technologies.frontend %}
+                    {% for tech in technologies.frontend %}
+                    <span class="tech-badge">{{ tech }}</span>
+                    {% endfor %}
+                    {% else %}
+                    <span class="tech-badge">HTML5</span>
+                    <span class="tech-badge">CSS3</span>
+                    <span class="tech-badge">JavaScript</span>
+                    <span class="tech-badge">Bootstrap</span>
+                    <span class="tech-badge">Leaflet.js</span>
+                    <span class="tech-badge">OpenStreetMap</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Manfaat Penelitian -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="info-card">
+                    <h5><i class="ph ph-lightbulb me-2"></i>Manfaat Penelitian</h5>
+                    <div class="row">
+                        {% if benefits %}
+                        {% for benefit in benefits %}
+                        <div class="col-lg-6 mb-3">
+                            <div class="benefit-card">
+                                <i class="ph ph-check-circle text-success me-2"></i>
+                                <strong>{{ benefit.split(':')[0] }}:</strong>
+                                {{ benefit.split(':')[1] if ':' in benefit else benefit }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="col-lg-6 mb-3">
+                            <div class="benefit-card">
+                                <i class="ph ph-check-circle text-success me-2"></i>
+                                <strong>Pemerintah Daerah:</strong> Perencanaan tata ruang yang lebih baik
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-3">
+                            <div class="benefit-card">
+                                <i class="ph ph-check-circle text-success me-2"></i>
+                                <strong>Penilai Properti:</strong> Estimasi nilai tanah yang objektif
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-3">
+                            <div class="benefit-card">
+                                <i class="ph ph-check-circle text-success me-2"></i>
+                                <strong>Investor:</strong> Analisis investasi properti yang lebih informed
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-3">
+                            <div class="benefit-card">
+                                <i class="ph ph-check-circle text-success me-2"></i>
+                                <strong>Akademisi:</strong> Referensi untuk penelitian selanjutnya
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kesimpulan -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="info-card">
+                    <h5><i class="ph ph-check-square me-2"></i>Kesimpulan Penelitian</h5>
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <p class="mb-0">
+                            <strong>Penelitian ini berhasil mengembangkan sistem prediksi nilai zona tanah dengan tingkat akurasi yang sangat tinggi</strong> (MAPE {{ model_performance.mape if model_performance else '4.95%' }}) menggunakan algoritma Random Forest. 
+                            Sistem dapat diimplementasikan untuk mendukung perencanaan tata ruang dan penilaian properti di Kecamatan Idi Rayeuk, Aceh Timur. 
+                            Model menunjukkan bahwa faktor luas zona, jarak ke pusat kota, dan jenis penggunaan lahan merupakan variabel paling berpengaruh dalam menentukan nilai zona tanah.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation untuk cards
+    const infoCards = document.querySelectorAll('.info-card');
+    infoCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.5s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100);
+        }, index * 100);
+    });
+
+    console.log('📋 Halaman Tentang Penelitian loaded');
+    console.log('🎯 Fokus: Prediksi Nilai Zona Tanah Idi Rayeuk');
+});
+</script>
+{% endblock %}

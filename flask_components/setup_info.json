@@ -1,0 +1,17 @@
+{
+  "libraries": [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "plotly"
+  ],
+  "folders_created": [
+    "flask_components",
+    "models",
+    "data",
+    "visualizations",
+    "results"
+  ],
+  "timestamp": "2026-01-26T22:17:28.470457",
+  "research_title": "PREDIKSI NILAI ZONA TANAH DI KECAMATAN IDI RAYEUK ACEH TIMUR MENGGUNAKAN METODE RANDOM FOREST REGRESSION BERBASIS SISTEM INFORMASI GEOGRAFIS"
+}

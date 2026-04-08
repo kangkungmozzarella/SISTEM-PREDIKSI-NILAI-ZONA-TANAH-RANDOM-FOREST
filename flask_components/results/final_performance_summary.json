@@ -1,0 +1,42 @@
+{
+  "model_info": {
+    "Model": "Random Forest Regression",
+    "Target": "Nilai Zona Tanah per m\u00b2",
+    "Dataset": "Kecamatan Idi Rayeuk, Aceh Timur",
+    "Data_Period": "2023-2025",
+    "Total_Zones": 452,
+    "Training_Size": 361,
+    "Testing_Size": 91
+  },
+  "final_metrics": {
+    "r2_score": 0.9863734805070827,
+    "mae": 9774.172829002504,
+    "rmse": 13760.771690025862,
+    "mape": 4.954806586368226,
+    "mae_percentage_of_avg_price": 4.229137424097423
+  },
+  "interpretation": {
+    "r2_category": "Sangat Baik (\u226580%)",
+    "mape_category": "Sangat Baik (\u226410%)",
+    "overall_assessment": "Good"
+  },
+  "comparison_train_test": {
+    "training_metrics": {
+      "r2": 0.9947344814314132,
+      "mae": 5165.674962310692,
+      "rmse": 8184.245008178239,
+      "mape": 3.021043401853346
+    },
+    "testing_metrics": {
+      "r2": 0.9863734805070827,
+      "mae": 9774.172829002504,
+      "rmse": 13760.771690025862,
+      "mape": 4.954806586368226
+    },
+    "overfitting_check": {
+      "r2_diff": 0.008361000924330453,
+      "mape_diff": 1.9337631845148797,
+      "is_overfitting": false
+    }
+  }
+}
