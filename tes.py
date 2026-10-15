@@ -1,18 +1,38 @@
+"""
+Ekstrak batas gampong/kelurahan Kecamatan Idi Rayeuk dari GeoJSON GADM level 4.
+
+Pemakaian:
+    python tes.py <path/gadm41_IDN_4.json> [output.geojson]
+
+File GADM bisa diunduh dari https://gadm.org/download_country.html (Indonesia, GeoJSON).
+"""
 import json
+import sys
 
-# Sesuaikan path file gadm41_IDN_4.json kamu
-with open('C:\Users\HYPE\Documents\Orderan Joki\Belum Selesai\6 November 2025 (Iqbal)\random-forest\gadm41_IDN_4.json') as f:
-    data = json.load(f)
 
-# Filter hanya Idi Rayeuk
-idi = [f for f in data['features'] 
-       if f['properties'].get('NAME_3') == 'IdiRayeuk']
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
 
-print(f'Jumlah gampong/kelurahan: {len(idi)}')
+    input_path = sys.argv[1]
+    output_path = sys.argv[2] if len(sys.argv) > 2 else 'idi_rayeuk_desa.geojson'
 
-# Simpan
-geojson = {'type': 'FeatureCollection', 'features': idi}
-with open('C:/Users/NAMA_USER/Downloads/idi_rayeuk_desa.geojson', 'w') as f:
-    json.dump(geojson, f)
+    with open(input_path, encoding='utf-8') as f:
+        data = json.load(f)
 
-print('Selesai! File tersimpan.')
+    # Filter hanya Idi Rayeuk
+    idi = [f for f in data['features']
+           if f['properties'].get('NAME_3') == 'IdiRayeuk']
+
+    print(f'Jumlah gampong/kelurahan: {len(idi)}')
+
+    geojson = {'type': 'FeatureCollection', 'features': idi}
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(geojson, f)
+
+    print(f'Selesai! File tersimpan di {output_path}')
+
+
+if __name__ == '__main__':
+    main()

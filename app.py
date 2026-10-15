@@ -1,30 +1,36 @@
-from flask import Flask, redirect, request, render_template, url_for, session, flash, jsonify, send_file
-import numpy as np
+from flask import Flask, redirect, request, render_template, url_for, session, flash, jsonify, send_from_directory
 import pandas as pd
-import json
-import pickle
 import os
+import hmac
 from functools import wraps
 from datetime import datetime
 import pymysql
 import csv
-from werkzeug.utils import secure_filename
 import io
+
+import prediction as model_service
 
 # Warnings
 import warnings
 warnings.filterwarnings('ignore')
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VISUALIZATION_DIR = os.path.join(BASE_DIR, 'flask_components', 'visualizations')
+
 app = Flask(__name__)
 
-app.secret_key = "land-value-prediction-secret-key-2025"
+# Konfigurasi bisa di-override lewat environment variable (lihat README)
+app.secret_key = os.environ.get('SECRET_KEY', 'land-value-prediction-secret-key-2025')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
 # Database Configuration
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',  # Sesuaikan dengan username MySQL kamu
-    'password': '',  # Sesuaikan dengan password MySQL kamu
-    'database': 'random-forest',  # Nama database kamu
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'random-forest'),
+    'port': int(os.environ.get('DB_PORT', 3306)),
     'charset': 'utf8mb4',
     'autocommit': True
 }
@@ -72,69 +78,40 @@ def load_land_value_data():
         print(f"Error loading data: {e}")
         return None
 
-def load_analysis_results():
-    """Load hasil analisis dari file JSON (opsional)"""
-    try:
-        analysis_file = os.path.join(os.getcwd(), 'flask_components', 'analysis_results.json')
-        if os.path.exists(analysis_file):
-            with open(analysis_file, 'r') as f:
-                data = json.load(f)
-                print(f"✅ Loaded analysis results from {analysis_file}")
-                return data
-        print(f"❌ Analysis file not found: {analysis_file}")
-        return None
-    except Exception as e:
-        print(f"❌ Error loading analysis results: {e}")
-        return None
+# Nama file visualisasi dari notebook untuk tiap panel di halaman analisis
+VISUALIZATION_FILES = {
+    'feature_importance_chart': 'feature_importance_bar.html',
+    'feature_category_chart': 'feature_importance_category.html',
+    'prediction_scatter': 'prediksi_vs_aktual_scatter.html',
+    'residual_plot': 'residual_plot.html',
+    'error_distribution': 'error_distribution.html',
+    'metrics_chart': 'metrics_comparison_train_test.html',
+}
 
 def load_visualizations():
-    """Load HTML visualizations dari folder flask_components/visualizations"""
-    try:
-        viz_folder = os.path.join(os.getcwd(), 'flask_components', 'visualizations')
-        visualizations = {}
-        
-        print(f"🔍 Checking visualization folder: {viz_folder}")
-        
-        if os.path.exists(viz_folder):
-            viz_files = [f for f in os.listdir(viz_folder) if f.endswith('.html')]
-            print(f"📁 Found HTML files: {viz_files}")
-            
-            for filename in viz_files:
-                if 'feature_importance' in filename.lower():
-                    visualizations['feature_importance_chart'] = filename
-                elif 'prediksi_vs_aktual' in filename.lower() or 'prediction_scatter' in filename.lower():
-                    visualizations['prediction_scatter'] = filename
-                elif 'error_distribution' in filename.lower():
-                    visualizations['error_distribution'] = filename
-                elif 'residual' in filename.lower():
-                    visualizations['residual_plot'] = filename
-                elif 'metrics' in filename.lower():
-                    visualizations['metrics_chart'] = filename
-            
-            print(f"✅ Total visualizations loaded: {len(visualizations)}")
-        else:
-            print(f"❌ Visualization folder not found: {viz_folder}")
-        
-        return visualizations
-    except Exception as e:
-        print(f"❌ Error loading visualizations: {e}")
-        return {}
+    """Daftar visualisasi HTML yang tersedia di flask_components/visualizations"""
+    return {
+        key: filename
+        for key, filename in VISUALIZATION_FILES.items()
+        if os.path.exists(os.path.join(VISUALIZATION_DIR, filename))
+    }
 
-def load_model_performance():
-    """Load hasil performa model Random Forest"""
+def get_model_mape():
+    """MAPE testing set dari hasil notebook (persen)"""
     try:
-        return None
-    except FileNotFoundError:
+        return model_service.get_model_metrics()['mape']
+    except Exception as e:
+        print(f"Error loading model metrics: {e}")
         return None
 
 def generate_sample_stats():
     """Generate sample statistics untuk development"""
     return {
-        'total_zones': 453,
+        'total_zones': 452,
         'total_kelurahan': 43,
         'total_years': 3,
         'data_period': '2023-2025',
-        'model_accuracy': 85.2,
+        'model_accuracy': get_model_mape(),
         'features_count': 20,
         'price_range': {
             'min': 68000,
@@ -157,14 +134,21 @@ def homepage():
     """Homepage publik untuk prediksi nilai zona tanah"""
     try:
         stats = generate_sample_stats()
-        
+        try:
+            kelurahan_list = model_service.get_kelurahan_list()
+            model_status = 'Active'
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            kelurahan_list = []
+            model_status = 'Model tidak tersedia'
+
         homepage_data = {
             'total_zones': stats['total_zones'],
             'total_kelurahan': stats['total_kelurahan'],
             'total_years': stats['total_years'],
             'data_period': stats['data_period'],
             'features_count': stats['features_count'],
-            'model_accuracy': 12.5,
+            'model_accuracy': stats['model_accuracy'],
             'price_min': stats['price_range']['min'],
             'price_max': stats['price_range']['max'],
             'price_avg': stats['price_range']['avg'],
@@ -174,28 +158,22 @@ def homepage():
             'main_kecamatan': 'Idi Rayeuk',
             'algorithm': 'Random Forest',
             'platform': 'Flask + Leaflet.js',
-            'kelurahan_list': [
-                'Keude Blang', 'Blang Geulumpang', 'Kampung Jawa', 'Tanoh Anou',
-                'Alue Dua Muka O', 'Alue Dua Muka S', 'Bantayan Timur', 'Buket Jok',
-                'Buket Juara', 'Buket Langa', 'Buket Meulinteung', 'Buket Pala',
-                'Dama Pulo', 'Gampong Aceh', 'Gampong Jalan', 'Gureb Blang',
-                'Kampung Blang', 'Kampung Jalan', 'Kampung Tanjong', 'Ketapang Dua',
-                'Keude Aceh', 'Keutapang Mameh', 'Lhok Asahan', 'Matang Bungong'
-            ],
-            'model_status': 'Development',
+            'kelurahan_list': kelurahan_list,
+            'model_status': model_status,
             'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
-        
+
         return render_template('index.html', **homepage_data)
-        
+
     except Exception as e:
+        print(f"Homepage error: {e}")
         fallback_data = {
-            'total_zones': 453,
+            'total_zones': 452,
             'total_kelurahan': 43,
             'total_years': 3,
             'features_count': 20,
-            'model_accuracy': 12.5,
-            'kelurahan_list': ['Idi Rayeuk', 'Peukan Bada', 'Simpang Jernih'],
+            'model_accuracy': None,
+            'kelurahan_list': [],
             'research_title': 'Prediksi Nilai Zona Tanah Idi Rayeuk',
             'algorithm': 'Random Forest'
         }
@@ -206,10 +184,11 @@ def homepage():
 def login():
     """Login admin untuk dashboard"""
     if request.method == 'POST':
-        username = request.form['username'] 
-        password = request.form['password']
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
 
-        if username == 'admin' and password == 'admin123':
+        if (hmac.compare_digest(username, ADMIN_USERNAME)
+                and hmac.compare_digest(password, ADMIN_PASSWORD)):
             session['username'] = username
             session['status'] = "Login"
             flash(f"Selamat datang di Sistem Prediksi Nilai Zona Tanah, {username}!", 'success')
@@ -233,8 +212,7 @@ def dashboard():
     """Dashboard utama untuk prediksi nilai zona tanah"""
     try:
         land_data = load_land_value_data()
-        model_performance = load_model_performance()
-        
+
         if land_data is not None and len(land_data) > 0:
             dashboard_data = {
                 'total_zones': len(land_data),
@@ -255,7 +233,7 @@ def dashboard():
                 'provinsi': 'Aceh',
                 'algorithm': 'Random Forest Regression',
                 'platform': 'WebGIS + Leaflet JS',
-                'model_accuracy': 85.2,
+                'model_accuracy': get_model_mape(),
                 'evaluation_metrics': ['MAE', 'MAPE', 'RMSE', 'R²'],
                 'research_title': 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk Aceh Timur menggunakan Random Forest Regression berbasis Sistem Informasi Geografis',
                 'research_location': 'Kecamatan Idi Rayeuk, Kabupaten Aceh Timur',
@@ -303,9 +281,9 @@ def dashboard():
         flash(f'Error loading dashboard data: {str(e)}', 'danger')
         print(f"Dashboard error: {str(e)}")
         minimal_data = {
-            'total_zones': 453,
+            'total_zones': 452,
             'total_kelurahan': 43,
-            'model_accuracy': 85.2,
+            'model_accuracy': get_model_mape(),
             'data_period': '2023-2025',
             'research_title': 'Prediksi Nilai Zona Tanah Idi Rayeuk',
             'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
@@ -516,7 +494,8 @@ def api_zones_data():
                     'status_air_bersih': int(latest['status_air_bersih']),
                     'tahun_terbaru': int(latest['tahun_data']),
                     'tahun_list': tahun_list,
-                    'nilai_per_tahun': nilai_per_tahun
+                    'nilai_per_tahun': nilai_per_tahun,
+                    'id_zona_list': sorted(group['id_zona'].unique().tolist())
                 })
             
             return jsonify({
@@ -600,199 +579,89 @@ def tentang():
                              research_title='Prediksi Nilai Zona Tanah Idi Rayeuk',
                              year='2025')   
 
+#-------Prediksi API---------#
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
+    """
+    Prediksi nilai zona tanah menggunakan model Random Forest hasil training.
+    Menerima JSON atau form data dengan nama kolom sesuai dataset
+    (nama_kelurahan, jenis_penggunaan_lahan, luas_zona_m2, ...).
+    Fitur numerik yang dikosongkan diisi median zona di kelurahan yang sama.
+    """
+    input_data = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        result = model_service.predict_land_value(input_data)
+        return jsonify(result)
+    except model_service.PredictionError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        print(f"Prediction error: {e}")
+        return jsonify({'success': False, 'error': 'Model gagal memproses prediksi'}), 500
+
 #-------Hasil Analisis Route---------#
 @app.route('/analisis')
 @login_required
 def analisis_results():
-    """Halaman hasil analisis Random Forest"""
+    """Halaman hasil analisis Random Forest (hasil evaluasi asli dari notebook)"""
+    visualizations = load_visualizations()
     try:
+        analysis_data = model_service.load_analysis_results()
         land_data = load_land_value_data()
-        analysis_results = load_analysis_results()
-        visualizations = load_visualizations()
-        
         if land_data is not None and len(land_data) > 0:
-            total_data = len(land_data)
-            
-            model_performance = {
-                'mape': analysis_results.get('mape', 12.5) if analysis_results else 12.5,
-                'mae': analysis_results.get('mae', int(land_data['nilai_tanah_per_m2'].mean() * 0.125)) if analysis_results else int(land_data['nilai_tanah_per_m2'].mean() * 0.125),
-                'rmse': analysis_results.get('rmse', int(land_data['nilai_tanah_per_m2'].mean() * 0.18)) if analysis_results else int(land_data['nilai_tanah_per_m2'].mean() * 0.18),
-                'r2_score': analysis_results.get('r2_score', 0.852) if analysis_results else 0.852
-            }
-            
-            feature_importance = analysis_results.get('feature_importance', [
-                {'feature_name': 'luas_zona_m2', 'importance': 0.253},
-                {'feature_name': 'jarak_pusat_kota_km', 'importance': 0.221},
-                {'feature_name': 'jenis_penggunaan_lahan', 'importance': 0.187},
-                {'feature_name': 'aksesibilitas_skor', 'importance': 0.164},
-                {'feature_name': 'elevasi_mdpl', 'importance': 0.128},
-                {'feature_name': 'kepadatan_penduduk_km2', 'importance': 0.047}
-            ]) if analysis_results else [
-                {'feature_name': 'luas_zona_m2', 'importance': 0.253},
-                {'feature_name': 'jarak_pusat_kota_km', 'importance': 0.221},
-                {'feature_name': 'jenis_penggunaan_lahan', 'importance': 0.187},
-                {'feature_name': 'aksesibilitas_skor', 'importance': 0.164},
-                {'feature_name': 'elevasi_mdpl', 'importance': 0.128},
-                {'feature_name': 'kepadatan_penduduk_km2', 'importance': 0.047}
-            ]
-            
-            prediction_results = analysis_results.get('predictions', []) if analysis_results else []
-            if not prediction_results:
-                sample_data = land_data.sample(n=min(50, len(land_data))).copy()
-                prediction_results = []
-                
-                for _, row in sample_data.iterrows():
-                    actual = row['nilai_tanah_per_m2']
-                    error_factor = np.random.uniform(0.85, 1.15)
-                    predicted = actual * error_factor
-                    abs_error = abs(predicted - actual)
-                    pct_error = (abs_error / actual) * 100
-                    
-                    prediction_results.append({
-                        'id_zona': row['id_zona'],
-                        'kelurahan': row['nama_kelurahan'],
-                        'actual_value': actual,
-                        'predicted_value': predicted,
-                        'absolute_error': abs_error,
-                        'percentage_error': pct_error
-                    })
-            
-            error_analysis = []
-            for land_type in ['Komersial', 'Pemukiman', 'Pertanian']:
-                type_data = land_data[land_data['jenis_penggunaan_lahan'] == land_type]
-                if len(type_data) > 0:
-                    avg_value = type_data['nilai_tanah_per_m2'].mean()
-                    mae = avg_value * 0.125
-                    mape = 12.5 if land_type == 'Pemukiman' else (15.0 if land_type == 'Komersial' else 10.0)
-                    error_analysis.append({
-                        'land_type': land_type,
-                        'mae': mae,
-                        'mape': mape,
-                        'count': len(type_data)
-                    })
-            
-            model_config = analysis_results.get('model_config', {
-                'n_estimators': 100,
-                'max_depth': 15,
-                'min_samples_split': 5,
-                'min_samples_leaf': 2,
-                'random_state': 42
-            }) if analysis_results else {
-                'n_estimators': 100,
-                'max_depth': 15,
-                'min_samples_split': 5,
-                'min_samples_leaf': 2,
-                'random_state': 42
-            }
-            
-            analysis_data = {
-                'model_performance': model_performance,
-                'feature_importance': feature_importance,
-                'prediction_results': prediction_results,
-                'error_analysis': error_analysis,
-                'model_config': model_config,
-                'visualizations': visualizations,
-                'total_zones': total_data,
-                'total_kelurahan': land_data['nama_kelurahan'].nunique(),
-                'features_count': 20,
-                'algorithm': 'Random Forest Regression',
-                'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
-                'price_avg': land_data['nilai_tanah_per_m2'].mean(),
-                'data_source': 'Real Database Analysis',
-                'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'model_status': 'Active',
-                'viz_count': len(visualizations)
-            }
-            
+            analysis_data['total_zones'] = len(land_data)
+            analysis_data['total_kelurahan'] = land_data['nama_kelurahan'].nunique()
+            analysis_data['data_source'] = 'Database + hasil evaluasi model'
         else:
-            analysis_data = {
-                'model_performance': {
-                    'mape': 12.5,
-                    'mae': 30000,
-                    'rmse': 45000,
-                    'r2_score': 0.852
-                },
-                'feature_importance': [
-                    {'feature_name': 'luas_zona_m2', 'importance': 0.253},
-                    {'feature_name': 'jarak_pusat_kota_km', 'importance': 0.221},
-                    {'feature_name': 'jenis_penggunaan_lahan', 'importance': 0.187},
-                    {'feature_name': 'aksesibilitas_skor', 'importance': 0.164},
-                    {'feature_name': 'elevasi_mdpl', 'importance': 0.128}
-                ],
-                'prediction_results': [],
-                'error_analysis': [
-                    {'land_type': 'Komersial', 'mae': 35000, 'mape': 15.0, 'count': 0},
-                    {'land_type': 'Pemukiman', 'mae': 28000, 'mape': 12.5, 'count': 0},
-                    {'land_type': 'Pertanian', 'mae': 25000, 'mape': 10.0, 'count': 0}
-                ],
-                'model_config': {
-                    'n_estimators': 100,
-                    'max_depth': 15,
-                    'min_samples_split': 5,
-                    'min_samples_leaf': 2,
-                    'random_state': 42
-                },
-                'visualizations': visualizations,
-                'total_zones': 453,
-                'total_kelurahan': 43,
-                'features_count': 20,
-                'algorithm': 'Random Forest Regression',
-                'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
-                'price_avg': 245000,
-                'data_source': 'Sample Analysis Data',
-                'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'model_status': 'Development',
-                'viz_count': len(visualizations)
-            }
-        
-        return render_template('analisis/index.html', **analysis_data)
-        
+            reference = model_service.load_reference_data()
+            analysis_data['total_zones'] = len(reference)
+            analysis_data['total_kelurahan'] = reference['nama_kelurahan'].nunique()
+            analysis_data['data_source'] = 'Hasil evaluasi model (dataset training)'
     except Exception as e:
         flash(f'Error loading analysis results: {str(e)}', 'danger')
         print(f"Analysis error: {str(e)}")
-        minimal_data = {
-            'model_performance': {'mape': 12.5, 'mae': 30000, 'rmse': 45000, 'r2_score': 0.852},
+        analysis_data = {
+            'model_performance': None,
             'feature_importance': [],
+            'category_importance': {},
             'prediction_results': [],
+            'test_zone_ids': [],
+            'yearly_error': [],
             'error_analysis': [],
-            'model_config': {'n_estimators': 100, 'max_depth': 15},
-            'visualizations': {},
+            'model_config': {},
             'total_zones': 0,
-            'algorithm': 'Random Forest Regression',
-            'data_source': 'Error - Using Minimal Data',
-            'viz_count': 0
+            'total_kelurahan': 0,
+            'data_source': 'Error - hasil model tidak dapat dimuat',
         }
-        return render_template('analisis/index.html', **minimal_data)
+
+    analysis_data.update({
+        'visualizations': visualizations,
+        'viz_count': len(visualizations),
+        'features_count': 20,
+        'algorithm': 'Random Forest Regression',
+        'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
+        'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    })
+    return render_template('analisis/index.html', **analysis_data)
 
 # Route untuk serve visualization files
 @app.route('/visualization/<filename>')
 def serve_visualization(filename):
     """Serve visualization HTML files dari flask_components/visualizations"""
-    try:
-        viz_path = os.path.join(os.getcwd(), 'flask_components', 'visualizations', filename)
-        print(f"🔍 Looking for file: {viz_path}")
-        
-        if os.path.exists(viz_path):
-            print(f"✅ File found, serving: {filename}")
-            return send_file(viz_path)
-        else:
-            print(f"❌ File not found: {viz_path}")
-            viz_folder = os.path.join(os.getcwd(), 'flask_components', 'visualizations')
-            if os.path.exists(viz_folder):
-                available_files = os.listdir(viz_folder)
-                print(f"📁 Available files: {available_files}")
-            return f"Visualization file not found: {filename}", 404
-    except Exception as e:
-        print(f"❌ Error serving {filename}: {str(e)}")
-        return f"Error serving visualization: {str(e)}", 500
+    if not filename.endswith('.html'):
+        return "Visualization file not found", 404
+    return send_from_directory(VISUALIZATION_DIR, filename)
 
 #-------Error Handlers---------#
 @app.errorhandler(404)
 def not_found(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'error': 'Endpoint tidak ditemukan'}), 404
     return render_template('layouts/404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'error': 'Terjadi kesalahan pada server'}), 500
     return render_template('layouts/500.html'), 500
 
 #-------Context Processors---------#
@@ -828,13 +697,24 @@ if __name__ == '__main__':
             print("❌ Database connection: FAILED")
     except Exception as e:
         print(f"❌ Database error: {e}")
-    
+
+    try:
+        metrics = model_service.get_model_metrics()
+        model_service.load_pipeline()
+        print(f"✅ Model Random Forest loaded (MAPE {metrics['mape']:.2f}%, R² {metrics['r2_score']:.4f})")
+    except Exception as e:
+        print(f"❌ Model error: {e}")
+        print("   Pastikan scikit-learn sesuai requirements.txt dan file .pkl ada di flask_components/models/")
+
     print("=" * 60)
     print("Flask application starting...")
-    print("Login: admin/admin123")
     print("URL: http://localhost:5000")
     print("Dataset URL: http://localhost:5000/dataset")
     print("Analysis URL: http://localhost:5000/analisis")
     print("=" * 60)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(
+        debug=os.environ.get('FLASK_DEBUG', '0') == '1',
+        host=os.environ.get('HOST', '127.0.0.1'),
+        port=int(os.environ.get('PORT', 5000))
+    )

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment / secrets
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Data GIS mentah (besar, unduh dari GADM)
+gadm41_*.json

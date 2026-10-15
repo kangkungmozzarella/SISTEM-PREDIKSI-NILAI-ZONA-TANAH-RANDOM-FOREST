@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Prediksi Nilai Zona Tanah</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2E8B57 0%, #1B5E20 50%, #3498DB 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            color: #2c3e50;
+        }
+
+        .error-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .error-icon { font-size: 3.5rem; color: #2E8B57; }
+        .error-code { font-size: 4rem; font-weight: 700; color: #1B5E20; line-height: 1; margin: 0.5rem 0; }
+        .error-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .error-text { color: #6c757d; margin-bottom: 2rem; line-height: 1.6; }
+
+        .error-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.7rem 1.4rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid #2E8B57;
+        }
+        .btn-primary { background: #2E8B57; color: #fff; }
+        .btn-primary:hover { background: #1B5E20; border-color: #1B5E20; }
+        .btn-outline { color: #2E8B57; background: transparent; }
+        .btn-outline:hover { background: rgba(46, 139, 87, 0.08); }
+    </style>
+</head>
+<body>
+    <main class="error-card">
+        <i class="ph {% block icon %}ph-map-trifold{% endblock %} error-icon" aria-hidden="true"></i>
+        <div class="error-code">{% block code %}{% endblock %}</div>
+        <h1 class="error-title">{% block heading %}{% endblock %}</h1>
+        <p class="error-text">{% block message %}{% endblock %}</p>
+        <div class="error-actions">
+            <a href="{{ url_for('homepage') }}" class="btn btn-primary"><i class="ph ph-house"></i>Beranda</a>
+            {% if is_logged_in %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline"><i class="ph ph-squares-four"></i>Dashboard</a>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

@@ -1,5 +1,7 @@
-Flask
-numpy
-pandas
-pymysql
-werkzeug
+Flask>=2.3,<4
+numpy>=2.0
+pandas>=2.0
+# Harus sama dengan versi saat model di-training (lihat flask_components/models/*.pkl)
+scikit-learn==1.8.0
+PyMySQL>=1.1
+Werkzeug>=2.3

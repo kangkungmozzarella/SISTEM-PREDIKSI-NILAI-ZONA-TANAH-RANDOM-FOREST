@@ -200,6 +200,9 @@
         .result-card.high-value   { background: linear-gradient(135deg, #E74C3C, #C0392B); color: white; }
         .result-card.medium-value { background: linear-gradient(135deg, #F39C12, #E67E22); color: white; }
         .result-card.low-value    { background: linear-gradient(135deg, #3498DB, #2980B9); color: white; }
+        .result-card.error-result { background: #fdecea; color: #922b21; border: 1px solid #f5c6cb; }
+        .advanced-params summary { cursor: pointer; color: #2E8B57; }
+        .advanced-params summary:focus-visible { outline: 2px solid #2E8B57; outline-offset: 2px; }
 
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -410,7 +413,7 @@
                                         </label>
                                         <select class="form-control land-input" id="kelurahan" name="kelurahan" required>
                                             <option value="" disabled selected>Pilih Kelurahan/Gampong</option>
-                                            {% for kelurahan in kelurahan_list[:8] %}
+                                            {% for kelurahan in kelurahan_list %}
                                             <option value="{{ kelurahan }}">{{ kelurahan }}</option>
                                             {% endfor %}
                                         </select>
@@ -494,6 +497,45 @@
                                     </div>
                                 </div>
                             </div>
+                            <details class="advanced-params mb-3">
+                                <summary class="fw-bold">
+                                    <i class="ph ph-sliders-horizontal me-2"></i>Parameter lanjutan (opsional)
+                                </summary>
+                                <p class="text-muted small mt-2 mb-3">
+                                    Kosongkan untuk memakai nilai median zona di kelurahan yang dipilih.
+                                    Jarak ke pasar dan puskesmas adalah dua faktor paling berpengaruh pada model.
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="jarakPasar" class="form-label fw-bold">Jarak ke Pasar (m)</label>
+                                        <input type="number" class="form-control land-input" id="jarakPasar" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="jarakPuskesmas" class="form-label fw-bold">Jarak ke Puskesmas (m)</label>
+                                        <input type="number" class="form-control land-input" id="jarakPuskesmas" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="kepadatan" class="form-label fw-bold">Kepadatan Penduduk (jiwa/km²)</label>
+                                        <input type="number" class="form-control land-input" id="kepadatan" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="jarakSekolah" class="form-label fw-bold">Jarak ke Sekolah (m)</label>
+                                        <input type="number" class="form-control land-input" id="jarakSekolah" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="jarakJalan" class="form-label fw-bold">Jarak ke Jalan Utama (m)</label>
+                                        <input type="number" class="form-control land-input" id="jarakJalan" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="elevasi" class="form-label fw-bold">Elevasi (mdpl)</label>
+                                        <input type="number" class="form-control land-input" id="elevasi" min="0" step="1" placeholder="Median kelurahan">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="kemiringan" class="form-label fw-bold">Kemiringan Lereng (%)</label>
+                                        <input type="number" class="form-control land-input" id="kemiringan" min="0" step="0.1" placeholder="Median kelurahan">
+                                    </div>
+                                </div>
+                            </details>
                             <div class="d-flex flex-wrap align-items-center mb-3">
                                 <button type="submit" class="btn-predict">
                                     <i class="ph ph-calculator me-2"></i>Prediksi Nilai Tanah
@@ -532,7 +574,7 @@
                     <div class="info-card">
                         <div class="info-icon"><i class="ph ph-target"></i></div>
                         <h4>Akurasi Tinggi</h4>
-                        <p>Random Forest Regression mencapai akurasi prediksi dengan MAPE {{ "%.1f"|format(model_accuracy or 12.5) }}% untuk estimasi nilai tanah berdasarkan {{ total_zones or 453 }} zona di {{ main_kecamatan or 'Kecamatan Idi Rayeuk' }}</p>
+                        <p>Random Forest Regression mencapai akurasi prediksi dengan MAPE {{ "%.1f"|format(model_accuracy or 4.95) }}% untuk estimasi nilai tanah berdasarkan {{ total_zones or 453 }} zona di {{ main_kecamatan or 'Kecamatan Idi Rayeuk' }}</p>
                     </div>
                 </div>
                 <div class="col-lg-4 mb-4">
@@ -593,7 +635,7 @@
                     <div class="methodology-step">
                         <div class="step-number">5</div>
                         <h6>Model Evaluation</h6>
-                        <p>MAPE: {{ "%.1f"|format(model_accuracy or 12.5) }}%</p>
+                        <p>MAPE: {{ "%.1f"|format(model_accuracy or 4.95) }}%</p>
                     </div>
                 </div>
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
@@ -634,7 +676,7 @@
                             </div>
                             <div class="col-6">
                                 <ul class="list-unstyled">
-                                    <li>• MAPE {{ "%.1f"|format(model_accuracy or 12.5) }}%</li>
+                                    <li>• MAPE {{ "%.1f"|format(model_accuracy or 4.95) }}%</li>
                                     <li>• {{ features_count or 20 }} Fitur Spasial</li>
                                     <li>• Train/Test Split 80:20</li>
                                     <li>• Real-time Prediction</li>
@@ -775,17 +817,17 @@
 
         const sampleLands = {
             commercial: {
-                kelurahan: '{{ kelurahan_list[0] if kelurahan_list else "Keude Blang" }}',
+                kelurahan: 'Keude Blang',
                 jenis_lahan: 'Komersial', jarak_kota: 0.5, luas_zona: 500,
                 aksesibilitas: 9.0, status_listrik: 1, status_air: 1, tahun: 2025
             },
             residential: {
-                kelurahan: '{{ kelurahan_list[1] if kelurahan_list and kelurahan_list|length > 1 else "Blang Geulumpang" }}',
+                kelurahan: 'Blang Geulumpang',
                 jenis_lahan: 'Pemukiman', jarak_kota: 2.5, luas_zona: 1000,
                 aksesibilitas: 7.5, status_listrik: 1, status_air: 0, tahun: 2025
             },
             agricultural: {
-                kelurahan: '{{ kelurahan_list[2] if kelurahan_list and kelurahan_list|length > 2 else "Kampung Jawa" }}',
+                kelurahan: 'Buket Langa',
                 jenis_lahan: 'Pertanian', jarak_kota: 8.0, luas_zona: 2500,
                 aksesibilitas: 3.5, status_listrik: 0, status_air: 0, tahun: 2025
             }
@@ -838,31 +880,94 @@
             });
         });
 
+        // Mapping input form -> nama kolom dataset yang dipakai model
+        const predictionFields = {
+            kelurahan: 'nama_kelurahan',
+            jenisLahan: 'jenis_penggunaan_lahan',
+            jarakKota: 'jarak_pusat_kota_km',
+            luasZona: 'luas_zona_m2',
+            aksesibilitas: 'aksesibilitas_skor',
+            listrik: 'status_listrik',
+            airBersih: 'status_air_bersih',
+            tahunData: 'tahun_data',
+            jarakPasar: 'jarak_pasar_m',
+            jarakPuskesmas: 'jarak_puskesmas_m',
+            kepadatan: 'kepadatan_penduduk_km2',
+            jarakSekolah: 'jarak_sekolah_m',
+            jarakJalan: 'jarak_jalan_utama_m',
+            elevasi: 'elevasi_mdpl',
+            kemiringan: 'kemiringan_lereng_persen'
+        };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function renderPredictionError(message) {
+            document.getElementById('resultDiv').innerHTML = `
+                <div class="result-card error-result" role="alert">
+                    <h5 class="mb-1"><i class="ph ph-warning-circle me-2"></i>Prediksi gagal</h5>
+                    <p class="mb-0">${escapeHtml(message)}</p>
+                </div>`;
+        }
+
+        function renderPredictionResult(result) {
+            const m = result.model_metrics;
+            const filledCount = result.filled_defaults.length;
+            const filledNote = filledCount > 0
+                ? `<br><small class="opacity-75">${filledCount} parameter memakai median zona di ${escapeHtml(result.nama_kelurahan)}</small>`
+                : '';
+            document.getElementById('resultDiv').innerHTML = `
+                <div class="result-card ${result.category_class}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4><i class="ph ph-calculator me-2"></i>Hasil Prediksi</h4>
+                            <h2>${formatRupiah(result.prediction)}/m²</h2>
+                            <p class="mb-0">
+                                <small>${escapeHtml(result.jenis_penggunaan_lahan)} · ${escapeHtml(result.nama_kelurahan)} ·
+                                {{ algorithm or 'Random Forest Regression' }} | MAPE ${m.mape.toFixed(2)}% | R² ${m.r2_score.toFixed(4)}</small>
+                                ${filledNote}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="prediction-badge">${escapeHtml(result.category)}</div>
+                            <br><small class="text-white opacity-75">Rentang ±MAE: ${formatRupiah(result.range.lower)} – ${formatRupiah(result.range.upper)}/m²</small>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
         document.getElementById('predictionForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            document.getElementById('loadingDiv').style.display = 'block';
+            const loadingDiv = document.getElementById('loadingDiv');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            loadingDiv.style.display = 'block';
+            submitBtn.disabled = true;
             document.getElementById('resultDiv').innerHTML = '';
 
-            setTimeout(() => {
-                document.getElementById('loadingDiv').style.display = 'none';
-                document.getElementById('resultDiv').innerHTML = `
-                    <div class="result-card medium-value">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <h4><i class="ph ph-calculator me-2"></i>Hasil Prediksi</h4>
-                                <h2>Rp 245,000/m²</h2>
-                                <p class="mb-0">
-                                    <small>Prediksi menggunakan {{ algorithm or 'Random Forest Regression' }} | 
-                                    Confidence: 85% | MAPE: {{ "%.1f"|format(model_accuracy or 12.5) }}%</small>
-                                </p>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <div class="prediction-badge">Nilai Sedang</div>
-                                <br><small class="text-white opacity-75">Range: Rp 150k - 300k/m²</small>
-                            </div>
-                        </div>
-                    </div>`;
-            }, 2000);
+            const payload = {};
+            Object.entries(predictionFields).forEach(([inputId, column]) => {
+                const input = document.getElementById(inputId);
+                if (input && input.value !== '') payload[column] = input.value;
+            });
+
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success) renderPredictionResult(result);
+                    else renderPredictionError(result.error || 'Terjadi kesalahan saat memproses prediksi');
+                })
+                .catch(() => renderPredictionError('Tidak dapat terhubung ke server'))
+                .finally(() => {
+                    loadingDiv.style.display = 'none';
+                    submitBtn.disabled = false;
+                });
         });
 
         ['jarakKota', 'luasZona', 'aksesibilitas'].forEach(inputId => {
