@@ -45,6 +45,29 @@ def get_db_connection():
         print(f"Error connecting to database: {e}")
         return None
 
+#-------Format angka Indonesia untuk template---------#
+@app.template_filter('angka')
+def format_angka(value, digits=0):
+    """1234567.8 -> '1.234.568' (digits=0) atau '4,95' (digits=2)"""
+    if value is None:
+        return '-'
+    text = f"{float(value):,.{digits}f}"
+    return text.replace(',', '_').replace('.', ',').replace('_', '.')
+
+@app.template_filter('rupiah')
+def format_rupiah(value):
+    return '-' if value is None else f"Rp {format_angka(value)}"
+
+@app.template_filter('rupiah_singkat')
+def format_rupiah_singkat(value):
+    """68000 -> 'Rp 68 rb', 1250000 -> 'Rp 1,3 jt'"""
+    if value is None:
+        return '-'
+    value = float(value)
+    if value >= 1_000_000:
+        return f"Rp {format_angka(value / 1_000_000, 1)} jt"
+    return f"Rp {format_angka(value / 1000)} rb"
+
 # Login required decorator
 def login_required(f):
     @wraps(f)
@@ -104,85 +127,87 @@ def get_model_mape():
         print(f"Error loading model metrics: {e}")
         return None
 
-def generate_sample_stats():
-    """Generate sample statistics untuk development"""
+def get_land_data():
+    """
+    Data zona tanah dari database; jika database tidak tersedia atau kosong,
+    memakai dataset training (flask_components/data). Mengembalikan (df, sumber).
+    """
+    land_data = load_land_value_data()
+    if land_data is not None and len(land_data) > 0:
+        return land_data, 'database'
+    try:
+        return model_service.load_reference_data().copy(), 'dataset_training'
+    except Exception as e:
+        print(f"Error loading reference data: {e}")
+        return None, None
+
+def summarize_land_data(df):
+    """Ringkasan statistik nilai tanah yang dipakai di beberapa halaman"""
+    values = df['nilai_tanah_per_m2'].astype(float)
+    years = sorted(int(y) for y in df['tahun_data'].unique())
+    land_types = []
+    for jenis in ['Komersial', 'Pemukiman', 'Pertanian']:
+        subset = df[df['jenis_penggunaan_lahan'] == jenis]
+        if len(subset):
+            land_types.append({
+                'name': jenis,
+                'count': int(len(subset)),
+                'share': len(subset) / len(df),
+                'avg': int(subset['nilai_tanah_per_m2'].astype(float).mean()),
+            })
     return {
-        'total_zones': 452,
-        'total_kelurahan': 43,
-        'total_years': 3,
-        'data_period': '2023-2025',
-        'model_accuracy': get_model_mape(),
-        'features_count': 20,
-        'price_range': {
-            'min': 68000,
-            'max': 520000,
-            'avg': 245000
-        },
-        'land_types': {
-            'Komersial': 158,
-            'Pemukiman': 204, 
-            'Pertanian': 91
-        },
-        'kelurahan_coverage': [
-            'Idi Rayeuk', 'Peukan Bada', 'Simpang Jernih', 'Idi Tunong',
-            'Banda Alam', 'Gampong Jawa', 'Keude Panggoi', 'Julok'
-        ]
+        'total_zones': int(len(df)),
+        'total_kelurahan': int(df['nama_kelurahan'].nunique()),
+        'total_locations': int(df[['koordinat_latitude', 'koordinat_longitude']].drop_duplicates().shape[0]),
+        'years': years,
+        'data_period': f"{years[0]}–{years[-1]}" if years else '-',
+        'price_min': int(values.min()),
+        'price_max': int(values.max()),
+        'price_avg': int(values.mean()),
+        'price_median': int(values.median()),
+        'land_types': land_types,
     }
+
+def get_model_summary():
+    """Metrik, feature importance, dan konfigurasi model untuk halaman publik & admin"""
+    try:
+        results = model_service.load_analysis_results()
+        return {
+            'metrics': results['model_performance'],
+            'feature_importance': results['feature_importance'],
+            'category_importance': results['category_importance'],
+            'model_config': results['model_config'],
+            'train_size': results['train_size'],
+            'test_size': results['test_size'],
+        }
+    except Exception as e:
+        print(f"Error loading model summary: {e}")
+        return None
 
 @app.route('/')
 def homepage():
-    """Homepage publik untuk prediksi nilai zona tanah"""
+    """Homepage publik: peta 3D, form prediksi, dan ringkasan model"""
+    land_data, _ = get_land_data()
     try:
-        stats = generate_sample_stats()
-        try:
-            kelurahan_list = model_service.get_kelurahan_list()
-            model_status = 'Active'
-        except Exception as e:
-            print(f"Error loading model: {e}")
-            kelurahan_list = []
-            model_status = 'Model tidak tersedia'
-
-        homepage_data = {
-            'total_zones': stats['total_zones'],
-            'total_kelurahan': stats['total_kelurahan'],
-            'total_years': stats['total_years'],
-            'data_period': stats['data_period'],
-            'features_count': stats['features_count'],
-            'model_accuracy': stats['model_accuracy'],
-            'price_min': stats['price_range']['min'],
-            'price_max': stats['price_range']['max'],
-            'price_avg': stats['price_range']['avg'],
-            'research_title': 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk, Aceh Timur',
-            'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
-            'research_method': 'Random Forest Regression berbasis GIS',
-            'main_kecamatan': 'Idi Rayeuk',
-            'algorithm': 'Random Forest',
-            'platform': 'Flask + Leaflet.js',
-            'kelurahan_list': kelurahan_list,
-            'model_status': model_status,
-            'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-
-        return render_template('index.html', **homepage_data)
-
+        kelurahan_list = model_service.get_kelurahan_list()
     except Exception as e:
-        print(f"Homepage error: {e}")
-        fallback_data = {
-            'total_zones': 452,
-            'total_kelurahan': 43,
-            'total_years': 3,
-            'features_count': 20,
-            'model_accuracy': None,
-            'kelurahan_list': [],
-            'research_title': 'Prediksi Nilai Zona Tanah Idi Rayeuk',
-            'algorithm': 'Random Forest'
-        }
-        return render_template('index.html', **fallback_data)
+        print(f"Error loading model: {e}")
+        kelurahan_list = []
+
+    return render_template(
+        'index.html',
+        summary=summarize_land_data(land_data) if land_data is not None else None,
+        model=get_model_summary(),
+        kelurahan_list=kelurahan_list,
+    )
 
 #-------Login---------#
 @app.route('/admin/login', methods=['GET', 'POST'])
 def login():
     """Login admin untuk dashboard"""
+    if 'username' in session:
+        return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
@@ -191,10 +216,10 @@ def login():
                 and hmac.compare_digest(password, ADMIN_PASSWORD)):
             session['username'] = username
             session['status'] = "Login"
-            flash(f"Selamat datang di Sistem Prediksi Nilai Zona Tanah, {username}!", 'success')
+            flash(f"Selamat datang, {username}.", 'success')
             return redirect(url_for('dashboard'))
         else:
-            flash("Username atau Password Salah", 'danger')
+            flash("Username atau password salah.", 'danger')
 
     return render_template('admin/login.html')
 
@@ -202,149 +227,42 @@ def login():
 def logout():
     """Logout admin"""
     session.clear()
-    flash('Anda telah logout', 'info')
+    flash('Anda sudah keluar.', 'info')
     return redirect(url_for('homepage'))
 
 #-------Dashboard---------#
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Dashboard utama untuk prediksi nilai zona tanah"""
-    try:
-        land_data = load_land_value_data()
-
-        if land_data is not None and len(land_data) > 0:
-            dashboard_data = {
-                'total_zones': len(land_data),
-                'total_kelurahan': land_data['nama_kelurahan'].nunique(),
-                'total_years': land_data['tahun_data'].nunique(),
-                'data_period': f"{land_data['tahun_data'].min()}-{land_data['tahun_data'].max()}",
-                'features_count': 20,
-                'price_min': int(land_data['nilai_tanah_per_m2'].min()),
-                'price_max': int(land_data['nilai_tanah_per_m2'].max()),
-                'price_avg': int(land_data['nilai_tanah_per_m2'].mean()),
-                'land_types': land_data['jenis_penggunaan_lahan'].value_counts().to_dict(),
-                'komersial_count': len(land_data[land_data['jenis_penggunaan_lahan'] == 'Komersial']),
-                'pemukiman_count': len(land_data[land_data['jenis_penggunaan_lahan'] == 'Pemukiman']),
-                'pertanian_count': len(land_data[land_data['jenis_penggunaan_lahan'] == 'Pertanian']),
-                'kelurahan_list': sorted(land_data['nama_kelurahan'].unique().tolist()),
-                'main_kecamatan': 'Idi Rayeuk',
-                'kabupaten': 'Aceh Timur',
-                'provinsi': 'Aceh',
-                'algorithm': 'Random Forest Regression',
-                'platform': 'WebGIS + Leaflet JS',
-                'model_accuracy': get_model_mape(),
-                'evaluation_metrics': ['MAE', 'MAPE', 'RMSE', 'R²'],
-                'research_title': 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk Aceh Timur menggunakan Random Forest Regression berbasis Sistem Informasi Geografis',
-                'research_location': 'Kecamatan Idi Rayeuk, Kabupaten Aceh Timur',
-                'research_period': f"{land_data['tahun_data'].min()}-{land_data['tahun_data'].max()}",
-                'research_method': 'Random Forest Regression + GIS',
-                'data_status': 'Real Data from Database',
-                'model_status': 'Active',
-                'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-        else:
-            stats = generate_sample_stats()
-            dashboard_data = {
-                'total_zones': stats['total_zones'],
-                'total_kelurahan': stats['total_kelurahan'], 
-                'total_years': stats['total_years'],
-                'data_period': stats['data_period'],
-                'model_accuracy': stats['model_accuracy'],
-                'features_count': stats['features_count'],
-                'price_min': stats['price_range']['min'],
-                'price_max': stats['price_range']['max'],
-                'price_avg': stats['price_range']['avg'],
-                'land_types': stats['land_types'],
-                'komersial_count': stats['land_types']['Komersial'],
-                'pemukiman_count': stats['land_types']['Pemukiman'],
-                'pertanian_count': stats['land_types']['Pertanian'],
-                'kelurahan_list': stats['kelurahan_coverage'],
-                'main_kecamatan': 'Idi Rayeuk',
-                'kabupaten': 'Aceh Timur',
-                'provinsi': 'Aceh',
-                'algorithm': 'Random Forest Regression',
-                'platform': 'WebGIS + Leaflet JS',
-                'evaluation_metrics': ['MAE', 'MAPE', 'RMSE', 'R²'],
-                'research_title': 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk Aceh Timur menggunakan Random Forest Regression berbasis Sistem Informasi Geografis',
-                'research_location': 'Kecamatan Idi Rayeuk, Kabupaten Aceh Timur',
-                'research_period': '2023-2025',
-                'research_method': 'Random Forest Regression + GIS',
-                'data_status': 'No Database Connection - Using Sample Data',
-                'model_status': 'Development',
-                'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }
-        
-        return render_template('dashboard/index.html', **dashboard_data)
-        
-    except Exception as e:
-        flash(f'Error loading dashboard data: {str(e)}', 'danger')
-        print(f"Dashboard error: {str(e)}")
-        minimal_data = {
-            'total_zones': 452,
-            'total_kelurahan': 43,
-            'model_accuracy': get_model_mape(),
-            'data_period': '2023-2025',
-            'research_title': 'Prediksi Nilai Zona Tanah Idi Rayeuk',
-            'research_location': 'Kecamatan Idi Rayeuk, Aceh Timur',
-            'data_status': 'Error - Using Minimal Data',
-            'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        return render_template('dashboard/index.html', **minimal_data)
+    """Ringkasan data dan model untuk admin"""
+    land_data, source = get_land_data()
+    if land_data is None:
+        flash('Data zona tanah tidak dapat dimuat.', 'danger')
+    return render_template(
+        'dashboard/index.html',
+        summary=summarize_land_data(land_data) if land_data is not None else None,
+        model=get_model_summary(),
+        data_source=source,
+    )
 
 #-------Dataset Management Routes---------#
 @app.route('/dataset')
 @login_required
 def dataset_index():
-    """Halaman utama untuk mengelola dataset zona tanah"""
-    try:
-        land_data = load_land_value_data()
-        
-        if land_data is not None and len(land_data) > 0:
-            land_types_count = land_data['jenis_penggunaan_lahan'].value_counts()
-            
-            stats = {
-                'total_zones': len(land_data),
-                'total_kelurahan': land_data['nama_kelurahan'].nunique(),
-                'years': sorted(land_data['tahun_data'].unique().tolist()),
-                'land_types': land_types_count.to_dict(),
-                'price_stats': {
-                    'min': int(land_data['nilai_tanah_per_m2'].min()),
-                    'max': int(land_data['nilai_tanah_per_m2'].max()),
-                    'mean': int(land_data['nilai_tanah_per_m2'].mean()),
-                    'median': int(land_data['nilai_tanah_per_m2'].median())
-                }
-            }
-            dataset_list = land_data.to_dict('records')
-        else:
-            stats = {
-                'total_zones': 0,
-                'total_kelurahan': 0,
-                'years': [],
-                'land_types': {'Komersial': 0, 'Pemukiman': 0, 'Pertanian': 0},
-                'price_stats': {'min': 0, 'max': 0, 'mean': 0, 'median': 0}
-            }
-            dataset_list = []
-            flash('Tidak ada data di database', 'warning')
-        
-        return render_template('dataset/index.html', 
-                             dataset=dataset_list, 
-                             stats=stats,
-                             total_records=len(dataset_list))
-        
-    except Exception as e:
-        flash(f'Error loading dataset: {str(e)}', 'danger')
-        print(f"Dataset error: {str(e)}")
-        return render_template('dataset/index.html', 
-                             dataset=[], 
-                             stats={
-                                 'total_zones': 0,
-                                 'total_kelurahan': 0,
-                                 'years': [],
-                                 'land_types': {'Komersial': 0, 'Pemukiman': 0, 'Pertanian': 0},
-                                 'price_stats': {'min': 0, 'max': 0, 'mean': 0, 'median': 0}
-                             },
-                             total_records=0)
+    """Halaman untuk mengelola dataset zona tanah di database"""
+    connection = get_db_connection()
+    db_connected = connection is not None
+    if connection:
+        connection.close()
+
+    land_data = load_land_value_data() if db_connected else None
+    has_data = land_data is not None and len(land_data) > 0
+    return render_template(
+        'dataset/index.html',
+        db_connected=db_connected,
+        summary=summarize_land_data(land_data) if has_data else None,
+        dataset=land_data.to_dict('records') if has_data else [],
+    )
 
 @app.route('/dataset/upload', methods=['POST'])
 @login_required
@@ -372,6 +290,7 @@ def dataset_upload():
             cursor = connection.cursor()
             
             inserted_count = 0
+            skipped_rows = []
             for row in csv_input:
                 try:
                     insert_query = """
@@ -403,15 +322,21 @@ def dataset_upload():
                     inserted_count += 1
                 except Exception as row_error:
                     print(f"Error inserting row: {row_error}")
+                    skipped_rows.append(csv_input.line_num)
                     continue
             
             connection.commit()
             cursor.close()
             connection.close()
             
-            flash(f'Berhasil upload {inserted_count} data zona tanah', 'success')
+            if inserted_count:
+                flash(f'{inserted_count} baris berhasil diunggah.', 'success')
+            if skipped_rows:
+                preview = ', '.join(str(n) for n in skipped_rows[:10])
+                more = ' dan lainnya' if len(skipped_rows) > 10 else ''
+                flash(f'{len(skipped_rows)} baris dilewati karena kolom kosong atau formatnya salah (baris {preview}{more}).', 'warning')
         else:
-            flash('File harus berformat CSV', 'danger')
+            flash('File harus berformat .csv.', 'danger')
             
     except Exception as e:
         flash(f'Error upload file: {str(e)}', 'danger')
@@ -431,7 +356,7 @@ def dataset_reset():
             connection.commit()
             cursor.close()
             connection.close()
-            flash('Semua data berhasil direset', 'success')
+            flash('Semua data di tbl_dataset sudah dihapus.', 'success')
         else:
             flash('Error koneksi database', 'danger')
     except Exception as e:
@@ -510,74 +435,109 @@ def api_zones_data():
         print(f"API zones data error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e), 'total': 0, 'data': []})
 
+@app.route('/api/map/locations')
+def api_map_locations():
+    """
+    Data untuk peta 3D: satu entri per titik koordinat, berisi ringkasan nilai tanah
+    per jenis lahan per tahun. Memakai database; jika tidak tersedia, memakai
+    dataset training di flask_components/data.
+    """
+    try:
+        land_data = load_land_value_data()
+        source = 'database'
+        if land_data is None or len(land_data) == 0:
+            land_data = model_service.load_reference_data().copy()
+            source = 'dataset_training'
+
+        land_data['koordinat_latitude'] = land_data['koordinat_latitude'].astype(float)
+        land_data['koordinat_longitude'] = land_data['koordinat_longitude'].astype(float)
+        land_data['tahun_data'] = land_data['tahun_data'].astype(int)
+        land_data['nilai_tanah_per_m2'] = land_data['nilai_tanah_per_m2'].astype(float)
+
+        locations = []
+        group_cols = ['koordinat_latitude', 'koordinat_longitude', 'nama_kelurahan']
+        for (lat, lng, kelurahan), group in land_data.groupby(group_cols):
+            by_type = {}
+            for jenis, type_group in group.groupby('jenis_penggunaan_lahan'):
+                years = {}
+                for tahun, year_group in type_group.groupby('tahun_data'):
+                    values = year_group['nilai_tanah_per_m2']
+                    years[int(tahun)] = {
+                        'avg': round(float(values.mean())),
+                        'min': int(values.min()),
+                        'max': int(values.max()),
+                        'count': int(len(values)),
+                    }
+                by_type[jenis] = {
+                    'count': int(len(type_group)),
+                    'avg': round(float(type_group['nilai_tanah_per_m2'].mean())),
+                    'avg_luas_m2': round(float(type_group['luas_zona_m2'].astype(float).mean())),
+                    'years': years,
+                }
+            locations.append({
+                'lat': lat,
+                'lng': lng,
+                'nama_kelurahan': kelurahan,
+                'total_zona': int(len(group)),
+                'avg_aksesibilitas': round(float(group['aksesibilitas_skor'].astype(float).mean()), 1),
+                'avg_jarak_pusat_km': round(float(group['jarak_pusat_kota_km'].astype(float).mean()), 2),
+                'id_zona_list': sorted(group['id_zona'].astype(str).unique().tolist()),
+                'by_type': by_type,
+            })
+
+        return jsonify({
+            'status': 'success',
+            'source': source,
+            'total_locations': len(locations),
+            'total_zona': int(len(land_data)),
+            'years': sorted(land_data['tahun_data'].unique().tolist()),
+            'value_range': {
+                'min': int(land_data['nilai_tanah_per_m2'].min()),
+                'max': int(land_data['nilai_tanah_per_m2'].max()),
+            },
+            'bounds': {
+                'south': float(land_data['koordinat_latitude'].min()),
+                'north': float(land_data['koordinat_latitude'].max()),
+                'west': float(land_data['koordinat_longitude'].min()),
+                'east': float(land_data['koordinat_longitude'].max()),
+            },
+            'data': locations,
+        })
+    except Exception as e:
+        print(f"API map locations error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e), 'data': []}), 500
+
 @app.route('/tentang')
 def tentang():
     """Halaman tentang penelitian"""
-    try:
-        land_data = load_land_value_data()
-        
-        if land_data is not None and len(land_data) > 0:
-            total_data = len(land_data)
-            total_kelurahan = land_data['nama_kelurahan'].nunique()
-            data_period = f"{land_data['tahun_data'].min()}-{land_data['tahun_data'].max()}"
-            price_range = {
-                'min': int(land_data['nilai_tanah_per_m2'].min()),
-                'max': int(land_data['nilai_tanah_per_m2'].max()),
-                'avg': int(land_data['nilai_tanah_per_m2'].mean())
-            }
-        else:
-            total_data = 452
-            total_kelurahan = 43
-            data_period = "2023-2025"
-            price_range = {'min': 68000, 'max': 520000, 'avg': 245000}
-        
-        tentang_data = {
-            'research_title': 'Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk Aceh Timur Menggunakan Metode Random Forest Regression Berbasis Sistem Informasi Geografis',
-            'research_location': 'Kecamatan Idi Rayeuk, Kabupaten Aceh Timur, Provinsi Aceh',
-            'year': '2025',
-            'total_zones': total_data,
-            'total_kelurahan': total_kelurahan,
-            'data_period': data_period,
-            'price_range': price_range,
-            'features_count': 20,
-            'algorithm': 'Random Forest Regression',
-            'model_performance': {
-                'mape': '4.95%',
-                'r2': '0.9864',
-                'status': 'Outstanding'
-            },
-            'main_objective': 'Mengembangkan sistem prediksi nilai zona tanah yang akurat menggunakan machine learning dan GIS untuk mendukung perencanaan tata ruang dan penilaian properti',
-            'specific_objectives': [
-                'Menganalisis faktor-faktor yang mempengaruhi nilai zona tanah',
-                'Mengimplementasikan algoritma Random Forest untuk prediksi nilai tanah',
-                'Mengintegrasikan sistem prediksi dengan platform WebGIS',
-                'Mengevaluasi akurasi model prediksi yang dikembangkan',
-                'Memberikan rekomendasi untuk perencanaan tata ruang wilayah'
-            ],
-            'benefits': [
-                'Pemerintah Daerah: Perencanaan tata ruang yang lebih baik',
-                'Penilai Properti: Estimasi nilai tanah yang objektif dan akurat',
-                'Investor: Analisis investasi properti yang lebih informed',
-                'Akademisi: Referensi untuk penelitian selanjutnya',
-                'Masyarakat: Transparansi informasi nilai properti'
-            ],
-            'technologies': {
-                'backend': ['Python', 'Flask', 'PyMySQL', 'Scikit-learn'],
-                'frontend': ['HTML5', 'CSS3', 'JavaScript', 'Bootstrap'],
-                'gis': ['Leaflet.js', 'OpenStreetMap', 'QGIS'],
-                'visualization': ['Plotly', 'Chart.js'],
-                'database': ['MySQL']
-            }
-        }
-        
-        return render_template('tentang/index.html', **tentang_data)
-        
-    except Exception as e:
-        flash(f'Error loading tentang page: {str(e)}', 'danger')
-        print(f"Tentang error: {str(e)}")
-        return render_template('tentang/index.html', 
-                             research_title='Prediksi Nilai Zona Tanah Idi Rayeuk',
-                             year='2025')   
+    land_data, _ = get_land_data()
+    return render_template(
+        'tentang/index.html',
+        summary=summarize_land_data(land_data) if land_data is not None else None,
+        model=get_model_summary(),
+        research_title='Prediksi Nilai Zona Tanah di Kecamatan Idi Rayeuk, Aceh Timur Menggunakan Metode Random Forest Regression Berbasis Sistem Informasi Geografis',
+        research_location='Kecamatan Idi Rayeuk, Kabupaten Aceh Timur, Provinsi Aceh',
+        main_objective='Mengembangkan sistem prediksi nilai zona tanah yang akurat menggunakan machine learning dan GIS untuk mendukung perencanaan tata ruang dan penilaian properti.',
+        specific_objectives=[
+            'Menganalisis faktor-faktor yang mempengaruhi nilai zona tanah',
+            'Mengimplementasikan algoritma Random Forest untuk prediksi nilai tanah',
+            'Mengintegrasikan sistem prediksi dengan platform WebGIS',
+            'Mengevaluasi akurasi model prediksi yang dikembangkan',
+            'Memberikan rekomendasi untuk perencanaan tata ruang wilayah',
+        ],
+        benefits=[
+            ('Pemerintah daerah', 'Perencanaan tata ruang yang lebih baik'),
+            ('Penilai properti', 'Estimasi nilai tanah yang objektif'),
+            ('Investor', 'Analisis investasi properti berbasis data'),
+            ('Akademisi', 'Referensi untuk penelitian selanjutnya'),
+            ('Masyarakat', 'Transparansi informasi nilai tanah'),
+        ],
+        technologies=[
+            ('Model', ['Python', 'scikit-learn', 'pandas', 'NumPy', 'Plotly']),
+            ('Aplikasi web', ['Flask', 'PyMySQL', 'MySQL']),
+            ('Peta', ['MapLibre GL JS', 'OpenStreetMap', 'Esri World Imagery']),
+        ],
+    )
 
 #-------Prediksi API---------#
 @app.route('/api/predict', methods=['POST'])
@@ -597,6 +557,7 @@ def api_predict():
     except Exception as e:
         print(f"Prediction error: {e}")
         return jsonify({'success': False, 'error': 'Model gagal memproses prediksi'}), 500
+
 
 #-------Hasil Analisis Route---------#
 @app.route('/analisis')
@@ -625,6 +586,7 @@ def analisis_results():
             'category_importance': {},
             'prediction_results': [],
             'test_zone_ids': [],
+            'test_errors': {},
             'yearly_error': [],
             'error_analysis': [],
             'model_config': {},

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    {% include "layouts/_head.html" %}
+    <title>{% block title %}Nilai Tanah Idi Rayeuk{% endblock %}</title>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="{{ url_for('homepage') }}" class="brand">
+                <span class="brand-mark"><i class="ph ph-map-trifold" aria-hidden="true"></i></span>
+                <span>Nilai Tanah Idi Rayeuk<small>Random Forest · WebGIS</small></span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-icon nav-toggle" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Buka menu">
+                <i class="ph ph-list" aria-hidden="true"></i>
+            </button>
+            <nav class="site-nav" id="site-nav" aria-label="Navigasi utama">
+                <a class="nav-link" href="{{ url_for('homepage') }}#peta">Peta</a>
+                <a class="nav-link" href="{{ url_for('homepage') }}#prediksi">Prediksi</a>
+                <a class="nav-link" href="{{ url_for('homepage') }}#metode">Metode</a>
+                <a class="nav-link {% if request.endpoint == 'tentang' %}active{% endif %}" href="{{ url_for('tentang') }}">Tentang</a>
+                <div class="nav-actions">
+                    <button type="button" class="btn btn-ghost btn-icon theme-toggle" data-theme-toggle>
+                        <i class="ph ph-moon" aria-hidden="true"></i><i class="ph ph-sun" aria-hidden="true"></i>
+                    </button>
+                    {% if is_logged_in %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">Dashboard</a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm"><i class="ph ph-sign-in" aria-hidden="true"></i>Masuk admin</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="container mt-md">
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }}" role="status">
+                    <span>{{ message }}</span>
+                    <button type="button" class="alert-close" aria-label="Tutup">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <span>&copy; {{ current_year }} Prediksi Nilai Zona Tanah · {{ research_location }}</span>
+            <span>Peta: &copy; OpenStreetMap contributors · Citra: Esri</span>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

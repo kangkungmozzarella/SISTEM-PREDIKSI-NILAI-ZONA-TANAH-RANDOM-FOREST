@@ -1,0 +1,16 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="{{ app_description }}">
+<link rel="shortcut icon" href="{{ url_for('static', filename='images/logo/favicon.png') }}">
+<script>
+    // Terapkan tema tersimpan sebelum render agar tidak berkedip
+    try {
+        const saved = localStorage.getItem('nilai-tanah-theme');
+        if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+    } catch (e) { /* penyimpanan tidak tersedia */ }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">

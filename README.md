@@ -1,7 +1,7 @@
 # Sistem Prediksi Nilai Zona Tanah — Random Forest + WebGIS
 
 Prediksi nilai zona tanah (Rp/m²) di **Kecamatan Idi Rayeuk, Kabupaten Aceh Timur** menggunakan
-Random Forest Regression, dengan peta interaktif berbasis Leaflet.js.
+Random Forest Regression, dengan peta 3D interaktif berbasis MapLibre GL JS.
 
 ## Performa model (data testing)
 
@@ -12,7 +12,7 @@ Random Forest Regression, dengan peta interaktif berbasis Leaflet.js.
 | MAE | Rp 9.774 /m² |
 | RMSE | Rp 13.761 /m² |
 
-Dataset: 452 baris (2023–2025), 43 gampong/kelurahan, 3 jenis lahan (Komersial, Pemukiman, Pertanian).
+Dataset: 452 baris (2023–2025), 39 gampong/kelurahan di 50 titik koordinat, 3 jenis lahan (Komersial, Pemukiman, Pertanian).
 Split acak 80/20 (361 training, 91 testing, `random_state=42`).
 
 Fitur paling berpengaruh: jarak ke pasar (33,2%), jarak ke puskesmas (28,0%), luas zona (14,1%),

@@ -1,703 +1,263 @@
 {% extends "layouts/main_layout.html" %}
 
-{% block title %}Hasil Analisis - Prediksi Nilai Zona Tanah Idi Rayeuk{% endblock %}
+{% block title %}Hasil analisis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-    .analysis-header {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    .metric-card {
-        border-radius: 15px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(46, 139, 87, 0.1);
-        transition: transform 0.3s ease;
-        background: white;
-        margin-bottom: 1.5rem;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    
-    .metric-label {
-        color: #6c757d;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .metric-description {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-top: 0.5rem;
-    }
-    
-    .prediction-table {
-        font-size: 0.85rem;
-    }
-    
-    .prediction-table thead th {
-        background: var(--primary-color);
-        color: white;
-        text-align: center;
-        vertical-align: middle;
-        font-size: 0.8rem;
-    }
-    
-    .prediction-table tbody td {
-        text-align: center;
-        vertical-align: middle;
-    }
-    
-    .feature-importance-bar {
-        height: 8px;
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
-    }
-    
-    .visualization-frame {
-        width: 100%;
-        height: 500px;
-        border: none;
-        border-radius: 0 0 10px 10px;
-    }
-
-    /* Peta full width */
-    .analysis-map-container {
-        height: 480px;
-        border-radius: 0 0 10px 10px;
-        overflow: hidden;
-    }
-
-    #analysisMap {
-        height: 100%;
-        width: 100%;
-    }
-
-    .map-legend-analysis {
-        background: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-        min-width: 180px;
-        font-size: 0.85rem;
-    }
-
-    .legend-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 6px;
-    }
-
-    .legend-color {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        margin-right: 8px;
-        flex-shrink: 0;
-    }
-    
-    .error-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    
-    .error-low    { background: #d4edda; color: #155724; }
-    .error-medium { background: #fff3cd; color: #856404; }
-    .error-high   { background: #f8d7da; color: #721c24; }
-    
-    .model-config {
-        background: rgba(46, 139, 87, 0.05);
-        border-left: 4px solid var(--primary-color);
-        padding: 1rem;
-        border-radius: 0 10px 10px 0;
-    }
-    
-    .data-split-visual {
-        height: 20px;
-        border-radius: 10px;
-        overflow: hidden;
-        margin: 0.5rem 0;
-        display: flex;
-    }
-    
-    .train-split {
-        background: var(--primary-color);
-        height: 100%;
-    }
-    
-    .test-split {
-        background: var(--secondary-color);
-        height: 100%;
-    }
-
-    .viz-card-full {
-        margin-bottom: 2rem;
-    }
-</style>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 {% endblock %}
 
 {% block content %}
-<div class="row gy-4">
-    <div class="col-lg-12">
+{% set mp = model_performance %}
+{% set tm = training_metrics %}
 
-        {% set mp = model_performance %}
-        <!-- Analysis Header -->
-        <div class="analysis-header">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h2 class="mb-3">Hasil Analisis Random Forest Regression</h2>
-                    <p class="mb-0 lead">
-                        Analisis prediksi nilai zona tanah menggunakan {{ algorithm or 'Random Forest' }}
-                        dengan {{ total_zones or 0 }} zona dari {{ total_kelurahan or 0 }} lokasi
-                        di {{ research_location or 'Kecamatan Idi Rayeuk, Aceh Timur' }}
-                    </p>
-                    <small class="opacity-75">Sumber: {{ data_source }}</small>
-                </div>
-                <div class="col-lg-4 text-center">
-                    <div class="d-flex flex-column align-items-center">
-                        <h3 class="mb-1">{{ "%.2f"|format(mp.mape) if mp else '-' }}%</h3>
-                        <span class="badge bg-success px-3 py-2">MAPE Testing</span>
-                        <small class="mt-2 opacity-75">Evaluasi pada {{ test_size or '-' }} data testing</small>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="page-head">
+    <div>
+        <h1>Hasil analisis</h1>
+        <p>Evaluasi Random Forest pada {{ test_size or '-' }} data uji yang tidak dipakai saat training (pembagian acak 80/20).</p>
+    </div>
+    <span class="badge">{{ data_source }}</span>
+</div>
 
-        {% if mp %}
-        <!-- Model Performance Metrics -->
-        <div class="row mb-4">
-            <div class="col-lg-3 col-md-6">
-                <div class="metric-card text-center">
-                    <div class="metric-value text-success">{{ "%.2f"|format(mp.mape) }}%</div>
-                    <div class="metric-label">MAPE</div>
-                    <div class="metric-description">Mean Absolute Percentage Error</div>
-                    <div class="mt-2">
-                        {% if mp.mape <= 10 %}<span class="error-badge error-low">Sangat Baik (&le;10%)</span>
-                        {% elif mp.mape <= 20 %}<span class="error-badge error-medium">Baik (10–20%)</span>
-                        {% else %}<span class="error-badge error-high">Perlu Perbaikan</span>{% endif %}
-                    </div>
-                </div>
+{% if mp %}
+<section class="metric-strip" aria-label="Metrik evaluasi data uji">
+    <div class="metric">
+        <span class="metric-label">R²</span>
+        <span class="metric-value">{{ mp.r2_score|angka(4) }}</span>
+        <span class="metric-note">{{ (mp.r2_score * 100)|angka(1) }}% variasi nilai terjelaskan{% if tm %} · latih {{ tm.r2|angka(4) }}{% endif %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric-label">MAPE</span>
+        <span class="metric-value">{{ mp.mape|angka(2) }}%</span>
+        <span class="metric-note">Rata-rata selisih relatif{% if tm %} · latih {{ tm.mape|angka(2) }}%{% endif %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric-label">MAE</span>
+        <span class="metric-value value">{{ mp.mae|rupiah }}</span>
+        <span class="metric-note">Rata-rata selisih per m²{% if tm %} · latih {{ tm.mae|rupiah }}{% endif %}</span>
+    </div>
+    <div class="metric">
+        <span class="metric-label">RMSE</span>
+        <span class="metric-value">{{ mp.rmse|rupiah }}</span>
+        <span class="metric-note">Lebih peka pada selisih besar{% if tm %} · latih {{ tm.rmse|rupiah }}{% endif %}</span>
+    </div>
+</section>
+
+{% if overfitting_check %}
+<div class="alert {{ 'alert-warning' if overfitting_check.is_overfitting else 'alert-success' }}" role="status">
+    <i class="ph {{ 'ph-warning-circle' if overfitting_check.is_overfitting else 'ph-check-circle' }}" aria-hidden="true"></i>
+    <span>
+        Selisih R² data latih dan data uji {{ overfitting_check.r2_diff|angka(3) }}, selisih MAPE {{ overfitting_check.mape_diff|angka(2) }} poin.
+        {% if overfitting_check.is_overfitting %}Ada indikasi overfitting.{% else %}Tidak ada indikasi overfitting.{% endif %}
+    </span>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="grid grid-main-side" style="align-items:start">
+    <section class="panel">
+        <h2 class="panel-title">Feature importance</h2>
+        <p class="panel-desc">Kontribusi tiap fitur terhadap keputusan model. Menampilkan 10 dari {{ feature_importance|length }} fitur.</p>
+        {% if feature_importance %}
+        {% set max_imp = feature_importance[0].importance %}
+        <div class="bar-list mt-md">
+            {% for f in feature_importance[:10] %}
+            <div class="bar-row">
+                <span class="bar-label">{{ f.label }} <span class="xsmall subtle">{{ f.feature_name }}</span></span>
+                <span class="bar-value">{{ (f.importance * 100)|angka(1) }}%</span>
+                <div class="bar-track"><div class="bar-fill" style="width: {{ (f.importance / max_imp * 100)|round(1) }}%"></div></div>
             </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="metric-card text-center">
-                    <div class="metric-value text-primary">Rp {{ "{:,.0f}".format(mp.mae) }}</div>
-                    <div class="metric-label">MAE</div>
-                    <div class="metric-description">Mean Absolute Error per m²</div>
-                    {% if training_metrics %}<div class="mt-2"><small class="text-muted">Training: Rp {{ "{:,.0f}".format(training_metrics.mae) }}</small></div>{% endif %}
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="metric-card text-center">
-                    <div class="metric-value text-warning">Rp {{ "{:,.0f}".format(mp.rmse) }}</div>
-                    <div class="metric-label">RMSE</div>
-                    <div class="metric-description">Root Mean Square Error per m²</div>
-                    {% if training_metrics %}<div class="mt-2"><small class="text-muted">Training: Rp {{ "{:,.0f}".format(training_metrics.rmse) }}</small></div>{% endif %}
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="metric-card text-center">
-                    <div class="metric-value text-info">{{ "%.4f"|format(mp.r2_score) }}</div>
-                    <div class="metric-label">R² Score</div>
-                    <div class="metric-description">Coefficient of Determination</div>
-                    {% if overfitting_check %}
-                    <div class="mt-2">
-                        {% if overfitting_check.is_overfitting %}<span class="error-badge error-high">Indikasi overfitting</span>
-                        {% else %}<span class="error-badge error-low">Tidak overfitting (selisih R² {{ "%.3f"|format(overfitting_check.r2_diff) }})</span>{% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="empty"><i class="ph ph-chart-bar" aria-hidden="true"></i><span class="small">Feature importance tidak dapat dibaca dari model.</span></div>
         {% endif %}
+    </section>
 
-        <!-- Feature Importance - Full Width -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--primary-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-ranking me-2"></i>Feature Importance</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                {% set max_imp = feature_importance[0].importance if feature_importance else 1 %}
-                                {% for f in feature_importance[:8] %}
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-medium">{{ f.label }} <small class="text-muted">({{ f.feature_name }})</small></span>
-                                        <span class="badge bg-primary">{{ "%.1f"|format(f.importance * 100) }}%</span>
-                                    </div>
-                                    <div class="progress feature-importance-bar">
-                                        <div class="progress-bar"
-                                             style="width: {{ (f.importance / max_imp * 100)|round(1) }}%; background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));"
-                                             aria-valuenow="{{ (f.importance * 100)|round(1) }}" aria-valuemin="0" aria-valuemax="100">
-                                        </div>
-                                    </div>
-                                </div>
-                                {% else %}
-                                <p class="text-muted">Data feature importance tidak tersedia.</p>
-                                {% endfor %}
-                            </div>
-                            <div class="col-md-6 d-flex align-items-center">
-                                <div class="w-100 p-3 bg-light rounded">
-                                    <h6 class="text-primary mb-3">Kontribusi per Kategori Fitur</h6>
-                                    <ul class="list-unstyled mb-3" style="font-size:0.88rem;">
-                                        {% for cat, val in category_importance.items()|sort(attribute='1', reverse=True) %}
-                                        <li class="mb-2 d-flex justify-content-between">
-                                            <span><strong>{{ cat }}</strong></span>
-                                            <span>{{ "%.1f"|format(val * 100) }}%</span>
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% if feature_importance|length >= 2 %}
-                                    <p class="mb-0" style="font-size:0.88rem;">
-                                        Fitur paling berpengaruh adalah <strong>{{ feature_importance[0].label }}</strong>
-                                        ({{ "%.1f"|format(feature_importance[0].importance * 100) }}%) dan
-                                        <strong>{{ feature_importance[1].label }}</strong>
-                                        ({{ "%.1f"|format(feature_importance[1].importance * 100) }}%).
-                                    </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div class="stack gap-md">
+        {% if category_importance %}
+        <section class="panel">
+            <h2 class="panel-title">Per kategori fitur</h2>
+            <div class="stack gap-sm mt-md small">
+                {% for cat, val in category_importance.items()|sort(attribute='1', reverse=True) %}
+                <div class="row between"><span>{{ cat }}</span><strong class="num">{{ (val * 100)|angka(1) }}%</strong></div>
+                {% endfor %}
             </div>
-        </div>
-
-        <!-- Sebaran Area Analisis - Full Width -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--accent-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-map-trifold me-2"></i>Sebaran Area Analisis</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="position-relative">
-                            <div class="analysis-map-container">
-                                <div id="analysisMap"></div>
-                            </div>
-                            <div class="map-legend-analysis">
-                                <h6 class="mb-2"><strong>Data Analisis</strong></h6>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: #E74C3C;"></div>
-                                    <small>Training Data</small>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: #3498DB;"></div>
-                                    <small>Testing Data</small>
-                                </div>
-                                <hr style="margin: 8px 0;">
-                                <small class="text-muted">
-                                    <strong>{{ train_size or '-' }}</strong> baris training<br>
-                                    <strong>{{ test_size or '-' }}</strong> baris testing<br>
-                                    <span style="font-size:0.75rem;">Biru = zona yang punya data testing</span>
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Model Configuration - Full Width -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--secondary-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-gear me-2"></i>Model Configuration</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="model-config mb-4">
-                            <h6 class="text-primary mb-3">Random Forest Parameters</h6>
-                            <div class="row">
-                                {% for key, label in [('n_estimators', 'N Estimators'), ('max_depth', 'Max Depth'), ('min_samples_split', 'Min Samples Split'), ('min_samples_leaf', 'Min Samples Leaf'), ('random_state', 'Random State')] %}
-                                <div class="col-md-2 col-6 mb-2">
-                                    <strong>{{ label }}:</strong><br>
-                                    <span class="text-muted">{{ model_config.get(key, '-') }}</span>
-                                </div>
-                                {% endfor %}
-                                <div class="col-md-2 col-6 mb-2">
-                                    <strong>Split:</strong><br>
-                                    <span class="text-muted">Random 80/20</span>
-                                </div>
-                            </div>
-                        </div>
-                        <h6 class="text-primary mb-2">Data Split ({{ train_size or '-' }} Training + {{ test_size or '-' }} Testing)</h6>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Training: {{ train_size or '-' }} sampel (80%)</span>
-                            <span>Testing: {{ test_size or '-' }} sampel (20%)</span>
-                        </div>
-                        <div class="data-split-visual">
-                            <div class="train-split" style="width: 80%;"></div>
-                            <div class="test-split" style="width: 20%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Visualizations Full Width -->
-        <div class="row viz-card-full">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--primary-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-chart-bar me-2"></i>Feature Importance Chart</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if visualizations and visualizations.feature_importance_chart %}
-                        <iframe src="/visualization/{{ visualizations.feature_importance_chart }}" class="visualization-frame"></iframe>
-                        {% else %}
-                        <div class="text-center text-muted py-5">
-                            <i class="ph ph-chart-bar" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Feature Importance Chart</p>
-                            <small>Visualization loading...</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row viz-card-full">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--accent-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-chart-scatter me-2"></i>Prediction vs Actual Scatter Plot</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if visualizations and visualizations.prediction_scatter %}
-                        <iframe src="/visualization/{{ visualizations.prediction_scatter }}" class="visualization-frame"></iframe>
-                        {% else %}
-                        <div class="text-center text-muted py-5">
-                            <i class="ph ph-chart-scatter" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Prediction vs Actual Scatter Plot</p>
-                            <small>Visualization loading...</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row viz-card-full">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: #E67E22; color: white;">
-                        <h5 class="mb-0"><i class="ph ph-chart-line me-2"></i>Residual Analysis Plot</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if visualizations and visualizations.residual_plot %}
-                        <iframe src="/visualization/{{ visualizations.residual_plot }}" class="visualization-frame"></iframe>
-                        {% else %}
-                        <div class="text-center text-muted py-5">
-                            <i class="ph ph-chart-line" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Residual Analysis Plot</p>
-                            <small>Visualization loading...</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row viz-card-full">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: #8E44AD; color: white;">
-                        <h5 class="mb-0"><i class="ph ph-chart-pie me-2"></i>Error Distribution Analysis</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if visualizations and visualizations.error_distribution %}
-                        <iframe src="/visualization/{{ visualizations.error_distribution }}" class="visualization-frame"></iframe>
-                        {% else %}
-                        <div class="text-center text-muted py-5">
-                            <i class="ph ph-chart-pie" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Error Distribution Analysis</p>
-                            <small>Visualization loading...</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row viz-card-full">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: #C0392B; color: white;">
-                        <h5 class="mb-0"><i class="ph ph-chart-line-up me-2"></i>Model Performance Comparison</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if visualizations and visualizations.metrics_chart %}
-                        <iframe src="/visualization/{{ visualizations.metrics_chart }}" class="visualization-frame"></iframe>
-                        {% else %}
-                        <div class="text-center text-muted py-5">
-                            <i class="ph ph-chart-line-up" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Model Performance Comparison</p>
-                            <small>Visualization loading...</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Prediction Results Table -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header" style="background: var(--primary-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-table me-2"></i>Hasil Prediksi vs Aktual (Data Testing)</h5>
-                    </div>
-                    <div class="card-body">
-                        {% if prediction_results %}
-                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
-                            <table class="table table-hover prediction-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID Zona</th>
-                                        <th>Kelurahan</th>
-                                        <th>Tahun</th>
-                                        <th>Jenis Lahan</th>
-                                        <th>Aktual (Rp/m²)</th>
-                                        <th>Prediksi (Rp/m²)</th>
-                                        <th>Error (Rp)</th>
-                                        <th>Error (%)</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for result in prediction_results %}
-                                    <tr>
-                                        <td><strong>{{ result.id_zona }}</strong></td>
-                                        <td>{{ result.kelurahan }}</td>
-                                        <td>{{ result.tahun }}</td>
-                                        <td>{{ result.jenis_lahan }}</td>
-                                        <td>Rp {{ "{:,.0f}".format(result.actual_value) }}</td>
-                                        <td>Rp {{ "{:,.0f}".format(result.predicted_value) }}</td>
-                                        <td class="{% if result.absolute_error < 10000 %}text-success{% elif result.absolute_error < 20000 %}text-warning{% else %}text-danger{% endif %}">
-                                            Rp {{ "{:,.0f}".format(result.absolute_error) }}
-                                        </td>
-                                        <td>{{ "{:.1f}".format(result.percentage_error) }}%</td>
-                                        <td>
-                                            {% if result.percentage_error < 5 %}
-                                                <span class="error-badge error-low">Excellent</span>
-                                            {% elif result.percentage_error < 10 %}
-                                                <span class="error-badge error-medium">Good</span>
-                                            {% else %}
-                                                <span class="error-badge error-high">Review</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="text-center text-muted py-4">
-                            <i class="ph ph-table me-2"></i>File hasil prediksi testing tidak ditemukan di flask_components/results/.
-                        </div>
-                        {% endif %}
-                        <div class="mt-3 text-muted">
-                            <small>
-                                <i class="ph ph-info me-1"></i>
-                                Menampilkan seluruh {{ prediction_results|length }} prediksi pada data testing, diurutkan dari error terkecil.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% if error_analysis or yearly_error %}
-        <!-- Error Analysis -->
-        <div class="row mb-4">
-            {% if error_analysis %}
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <div class="card h-100">
-                    <div class="card-header" style="background: var(--secondary-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-tree me-2"></i>Error per Jenis Lahan (Testing)</h5>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm mb-0">
-                            <thead><tr><th>Jenis Lahan</th><th class="text-end">Jumlah</th><th class="text-end">MAE</th><th class="text-end">MAPE</th></tr></thead>
-                            <tbody>
-                                {% for e in error_analysis %}
-                                <tr>
-                                    <td>{{ e.jenis_penggunaan_lahan }}</td>
-                                    <td class="text-end">{{ e.count }}</td>
-                                    <td class="text-end">Rp {{ "{:,.0f}".format(e.mean_abs_error) }}</td>
-                                    <td class="text-end">{{ "%.2f"|format(e.mean_abs_pct_error) }}%</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            {% if yearly_error %}
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header" style="background: var(--accent-color); color: white;">
-                        <h5 class="mb-0"><i class="ph ph-calendar me-2"></i>Error per Tahun (Testing)</h5>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm mb-0">
-                            <thead><tr><th>Tahun</th><th class="text-end">MAE</th><th class="text-end">Error Maks</th><th class="text-end">MAPE</th></tr></thead>
-                            <tbody>
-                                {% for e in yearly_error %}
-                                <tr>
-                                    <td>{{ e.tahun_data }}</td>
-                                    <td class="text-end">Rp {{ "{:,.0f}".format(e.mean_abs_error) }}</td>
-                                    <td class="text-end">Rp {{ "{:,.0f}".format(e.max_abs_error) }}</td>
-                                    <td class="text-end">{{ "%.2f"|format(e.mean_abs_pct_error) }}%</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
+        </section>
         {% endif %}
-
-        <!-- Kesimpulan -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-3"><i class="ph ph-lightbulb me-2"></i>Kesimpulan Analisis</h5>
-                        {% if mp %}
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-primary">Performa Model (Data Testing)</h6>
-                                <ul class="list-unstyled">
-                                    <li><i class="ph ph-check-circle text-success me-2"></i>MAPE: <strong>{{ "%.2f"|format(mp.mape) }}%</strong></li>
-                                    <li><i class="ph ph-check-circle text-success me-2"></i>R²: <strong>{{ "%.4f"|format(mp.r2_score) }}</strong> ({{ "%.2f"|format(mp.r2_score * 100) }}% variansi terjelaskan)</li>
-                                    <li><i class="ph ph-check-circle text-success me-2"></i>MAE: <strong>Rp {{ "{:,.0f}".format(mp.mae) }}</strong> per m²</li>
-                                    <li><i class="ph ph-check-circle text-success me-2"></i>RMSE: <strong>Rp {{ "{:,.0f}".format(mp.rmse) }}</strong> per m²</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="text-primary">Fitur Paling Berpengaruh</h6>
-                                <ul class="list-unstyled">
-                                    {% for f in feature_importance[:4] %}
-                                    <li><i class="ph ph-star text-warning me-2"></i><strong>{{ f.label }}</strong>: {{ "%.1f"|format(f.importance * 100) }}%</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="mt-4 p-3 bg-light rounded">
-                            <p class="mb-0">
-                                <strong>Kesimpulan:</strong> Model Random Forest mencapai MAPE <strong>{{ "%.2f"|format(mp.mape) }}%</strong>
-                                dan R² <strong>{{ "%.4f"|format(mp.r2_score) }}</strong> pada data testing.
-                                {% if feature_importance|length >= 2 %}
-                                {{ feature_importance[0].label }} dan {{ feature_importance[1].label }} menjadi faktor dominan dalam menentukan nilai tanah
-                                di {{ research_location or 'Kecamatan Idi Rayeuk, Aceh Timur' }}.
-                                {% endif %}
-                            </p>
-                        </div>
-                        {% else %}
-                        <p class="text-muted mb-0">Hasil evaluasi model tidak dapat dimuat.</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <section class="panel">
+            <h2 class="panel-title">Konfigurasi model</h2>
+            <dl class="dl mt-md small">
+                <dt>n_estimators</dt><dd class="num">{{ model_config.get('n_estimators', '-') }}</dd>
+                <dt>max_depth</dt><dd class="num">{{ model_config.get('max_depth', '-') }}</dd>
+                <dt>min_samples_split</dt><dd class="num">{{ model_config.get('min_samples_split', '-') }}</dd>
+                <dt>min_samples_leaf</dt><dd class="num">{{ model_config.get('min_samples_leaf', '-') }}</dd>
+                <dt>random_state</dt><dd class="num">{{ model_config.get('random_state', '-') }}</dd>
+                <dt>Data latih / uji</dt><dd class="num">{{ train_size or '-' }} / {{ test_size or '-' }}</dd>
+            </dl>
+        </section>
     </div>
 </div>
+
+{% if error_analysis or yearly_error %}
+<div class="grid grid-2" style="align-items:start">
+    {% if error_analysis %}
+    <section class="panel panel-flush">
+        <div class="panel-head">
+            <div>
+                <h2 class="panel-title">Error per jenis lahan</h2>
+                <p class="panel-desc">Data uji</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Jenis lahan</th><th class="r">Jumlah</th><th class="r">MAE</th><th class="r">MAPE</th></tr></thead>
+                <tbody>
+                    {% for e in error_analysis %}
+                    <tr>
+                        <td><span class="row gap-sm"><span class="dot dot-{{ e.jenis_penggunaan_lahan|lower }}"></span>{{ e.jenis_penggunaan_lahan }}</span></td>
+                        <td class="r num">{{ e.count }}</td>
+                        <td class="r num">{{ e.mean_abs_error|rupiah }}</td>
+                        <td class="r num"><strong>{{ e.mean_abs_pct_error|angka(2) }}%</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+    {% if yearly_error %}
+    <section class="panel panel-flush">
+        <div class="panel-head">
+            <div>
+                <h2 class="panel-title">Error per tahun</h2>
+                <p class="panel-desc">Data uji</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Tahun</th><th class="r">MAE</th><th class="r">Error terbesar</th><th class="r">MAPE</th></tr></thead>
+                <tbody>
+                    {% for e in yearly_error %}
+                    <tr>
+                        <td class="num">{{ e.tahun_data }}</td>
+                        <td class="r num">{{ e.mean_abs_error|rupiah }}</td>
+                        <td class="r num">{{ e.max_abs_error|rupiah }}</td>
+                        <td class="r num"><strong>{{ e.mean_abs_pct_error|angka(2) }}%</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endif %}
+
+{% set viz_tabs = [
+    ('prediction_scatter', 'Prediksi vs aktual'),
+    ('residual_plot', 'Residual'),
+    ('error_distribution', 'Distribusi error'),
+    ('feature_importance_chart', 'Feature importance'),
+    ('feature_category_chart', 'Kategori fitur'),
+    ('metrics_chart', 'Latih vs uji'),
+] %}
+{% set available_tabs = [] %}
+{% for key, label in viz_tabs %}{% if visualizations.get(key) %}{% set _ = available_tabs.append((key, label)) %}{% endif %}{% endfor %}
+<section class="panel panel-flush">
+    <div class="panel-head">
+        <div>
+            <h2 class="panel-title">Grafik evaluasi</h2>
+            <p class="panel-desc">Grafik interaktif hasil notebook penelitian (Plotly).</p>
+        </div>
+    </div>
+    {% if available_tabs %}
+    <div class="tabs" role="tablist" aria-label="Pilih grafik">
+        {% for key, label in available_tabs %}
+        <button type="button" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}" aria-controls="vizFrame" data-src="{{ url_for('serve_visualization', filename=visualizations[key]) }}">{{ label }}</button>
+        {% endfor %}
+    </div>
+    <iframe id="vizFrame" class="viz-frame" title="Grafik evaluasi" loading="lazy" src="{{ url_for('serve_visualization', filename=visualizations[available_tabs[0][0]]) }}"></iframe>
+    {% else %}
+    <div class="empty"><i class="ph ph-chart-line" aria-hidden="true"></i><span class="small">File grafik tidak ditemukan di <code>flask_components/visualizations/</code>. Jalankan ulang notebook untuk membuatnya.</span></div>
+    {% endif %}
+</section>
+
+<section class="panel panel-flush">
+    <div class="panel-head">
+        <div>
+            <h2 class="panel-title">Sebaran data latih &amp; uji</h2>
+            <p class="panel-desc">Kolom bertumpuk: merah = data latih, biru = data uji. Tinggi kolom = jumlah zona di titik itu. Klik kolom untuk MAPE per titik.</p>
+        </div>
+    </div>
+    <div class="map-frame" style="height:460px"><div id="analysisMap"></div></div>
+</section>
+
+<section class="panel panel-flush">
+    <div class="panel-head">
+        <div>
+            <h2 class="panel-title">Prediksi vs nilai aktual</h2>
+            <p class="panel-desc">{{ prediction_results|length }} baris data uji, diurutkan dari selisih terkecil.</p>
+        </div>
+    </div>
+    {% if prediction_results %}
+    <div class="table-wrap table-scroll">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID zona</th>
+                    <th>Gampong</th>
+                    <th>Tahun</th>
+                    <th>Jenis lahan</th>
+                    <th class="r">Aktual/m²</th>
+                    <th class="r">Prediksi/m²</th>
+                    <th class="r">Selisih</th>
+                    <th class="r">Selisih %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in prediction_results %}
+                <tr>
+                    <td><strong>{{ r.id_zona }}</strong></td>
+                    <td>{{ r.kelurahan }}</td>
+                    <td class="num">{{ r.tahun }}</td>
+                    <td><span class="row gap-sm nowrap"><span class="dot dot-{{ r.jenis_lahan|lower }}"></span>{{ r.jenis_lahan }}</span></td>
+                    <td class="r num">{{ r.actual_value|rupiah }}</td>
+                    <td class="r num">{{ r.predicted_value|rupiah }}</td>
+                    <td class="r num">{{ r.absolute_error|rupiah }}</td>
+                    <td class="r num">
+                        <span class="badge {{ 'badge-success' if r.percentage_error < 5 else ('badge-warning' if r.percentage_error < 10 else 'badge-danger') }}">{{ r.percentage_error|angka(1) }}%</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="xsmall subtle" style="padding:12px 20px">Hijau &lt; 5%, kuning 5–10%, merah ≥ 10% selisih dari nilai aktual.</p>
+    {% else %}
+    <div class="empty"><i class="ph ph-table" aria-hidden="true"></i><span class="small">File <code>testing_predictions_detail.csv</code> tidak ditemukan di <code>flask_components/results/</code>.</span></div>
+    {% endif %}
+</section>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="{{ url_for('static', filename='js/zone-map-3d.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
+    // Split asli dari notebook (train_test_split, random_state=42)
+    ZoneMap3D.create({
+        container: 'analysisMap',
+        mode: 'split',
+        testZoneIds: {{ test_zone_ids|tojson }},
+        testErrors: {{ test_errors|tojson }}
+    });
 
-    // Initialize Analysis Map
-    const analysisMap = L.map('analysisMap').setView([4.945, 97.765], 12);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(analysisMap);
-
-    // Fetch semua zona dari API, tampilkan sebagai training/testing
-    fetch('/api/dataset/zones')
-        .then(res => res.json())
-        .then(response => {
-            if (response.status === 'success' && response.data.length > 0) {
-                const data = response.data;
-
-                // Split asli dari notebook (train_test_split, random_state=42)
-                const testIds = new Set({{ test_zone_ids|tojson }});
-                // Satu marker bisa mewakili beberapa id_zona (lokasi sama, tahun berbeda)
-                const isTesting = zone => (zone.id_zona_list || [zone.id_zona]).some(id => testIds.has(id));
-                const training = data.filter(zone => !isTesting(zone));
-                const testing  = data.filter(isTesting);
-
-                // Training markers (merah)
-                training.forEach(zone => {
-                    L.circleMarker([zone.lat, zone.lng], {
-                        radius: 6,
-                        fillColor: '#E74C3C',
-                        color: '#fff',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).bindPopup(`
-                        <strong>Training Data</strong><br>
-                        ${zone.nama_kelurahan}<br>
-                        Zona ${zone.nomor_zona}<br>
-                        Nilai: Rp ${parseInt(zone.nilai_tanah_per_m2).toLocaleString('id-ID')}/m²
-                    `).addTo(analysisMap);
-                });
-
-                // Testing markers (biru)
-                testing.forEach(zone => {
-                    L.circleMarker([zone.lat, zone.lng], {
-                        radius: 6,
-                        fillColor: '#3498DB',
-                        color: '#fff',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).bindPopup(`
-                        <strong>Testing Data</strong><br>
-                        ${zone.nama_kelurahan}<br>
-                        Zona ${zone.nomor_zona}<br>
-                        Nilai: Rp ${parseInt(zone.nilai_tanah_per_m2).toLocaleString('id-ID')}/m²
-                    `).addTo(analysisMap);
-                });
-
-                console.log(`✅ Analysis map: ${training.length} training, ${testing.length} testing`);
-            }
-        })
-        .catch(err => console.error('Error loading analysis map:', err));
-
-    console.log('📊 Analysis results loaded');
+    const frame = document.getElementById('vizFrame');
+    const tabs = document.querySelectorAll('.tabs [role="tab"]');
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+        tabs.forEach(t => t.setAttribute('aria-selected', t === tab ? 'true' : 'false'));
+        frame.src = tab.dataset.src;
+    }));
 });
 </script>
 {% endblock %}
